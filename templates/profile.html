@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block meta %}
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="I forgor">
+    <meta name="author" content="Nicholas">
+{% endblock %}
+
+{% block title %}
+    Amsyar's Card Shop Admin - Homepage
+{% endblock %}
+
+{% block styles %}
+    <!-- Custom fonts for this template-->
+    <link href="{{url_for('static', filename='vendor/fontawesome-free/css/all.min.css')}}" rel="stylesheet" type="text/css">
+    <link
+        href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
+        rel="stylesheet">
+
+    <!-- Custom styles for this template-->
+    <link href="{{url_for('static', filename='css/sb-admin-2.min.css')}}" rel="stylesheet">
+{% endblock %}
+
+{% block sidebar %}
+    ACS Admin
+{% endblock %}
+
+{% block header %}
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Profile</h1>
+    </div>
+{% endblock %}
+
+{% block content %}
+                    <!-- Begin Page Content -->
+                <div class="container-fluid">
+
+                    <div class="col-xl-8 col-lg-7">
+                        <div class="card shadow mb-4">
+                            <!-- Card Body -->
+                            <div class="card-body row" style="vertical-align: middle;">
+                                <img class="img-profile rounded-circle col-2 py-1"
+                                src="{{url_for('static', filename='img/undraw_profile.svg')}}">
+                                <div class="col-md-8 mt-5 py-4">
+                                    <h2>Hello, {{name}}</h2>
+                                </div>
+                            </div>
+                             <!-- Card Header-->
+                             <div
+                             class="card-body py-3 d-flex flex-row align-items-center justify-content-between">
+                                <h6 class="font-weight-bold text-info">Phone Number:  </h6>
+                                <h6 class="col-md">{{number}}</h6>
+                                <h6 class="font-weight-bold text-info mr-3">Email:  </h6>
+                                <h6 class="col-md">{{email}}</h6>
+                            </div>
+                            <div
+                            class="card-body py-3 d-flex flex-row align-items-center justify-content-between">
+                               <h6 class="font-weight-bold text-info">Staff ID:  </h6>
+                               <h6 class="col-md">{{staff_id}}</h6>
+                               <h6 class="font-weight-bold text-info mr-4">Position:  </h6>
+                               <h6 class="col mr-4">{{position}}</h6>
+                           </div>
+                           <div
+                           class="card-body py-3 d-flex flex-row align-items-center justify-content-between">
+                              <h4 class="font-weight-bold text-info">
+                                  At a glance
+                              </h4>
+                          </div>
+                                <!-- Content Row -->
+                                <div class="card-body d-flex flex-row align-items-center justify-content-between">
+
+                                    <!-- Earnings (Monthly) Card Example -->
+                                    <div class="col-xl-3 col-md-6">
+                                        <div class="card border-left-primary h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                                            Clients scheduled</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{requests}}</div>
+                                                    </div>
+                                                    <div class="col-auto">
+                                                        <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Earnings (Monthly) Card Example -->
+                                    <div class="col-xl-3 col-md-6">
+                                        <div class="card border-left-success h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                                            Earnings (Annual)</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{earnings}}</div>
+                                                    </div>
+                                                    <div class="col-auto">
+                                                        <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body d-flex flex-row align-items-center justify-content-between">
+                                     <!-- Earnings (Monthly) Card Example -->
+                                     <div class="col-xl-3 col-md-6 mb-2">
+                                        <div class="card border-left-info h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Experience
+                                                        </div>
+                                                        <div class="row no-gutters align-items-center">
+                                                            <div class="col-auto">
+                                                                <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">{{experience}} year(s)</div>
+                                                            </div>
+                                                            <div class="col">
+                                                                <div class="progress progress-sm mr-2">
+                                                                    <div class="progress-bar bg-info" role="progressbar"
+                                                                        style="width: {{requests}}%" aria-valuenow="{{requests}}" aria-valuemin="0"
+                                                                        aria-valuemax="100"></div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-auto">
+                                                        <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xl-3 col-md-6 mb-2">
+                                        <div class="card border-left-warning h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                                            Connections</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{connections}}</div>
+                                                    </div>
+                                                    <div class="col-auto">
+                                                        <i class="fas fa-comments fa-2x text-gray-300"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                    <!-- Pending Requests Card Example -->
+                                <div
+                                class="card-body py-3 d-flex flex-row align-items-center justify-content-between">
+                                    <h4 class="font-weight-bold text-info">
+                                        About Me
+                                    </h4>
+                                </div>
+                                <div
+                                class="card-body py-3 d-flex flex-row align-items-center justify-content-between border-left-secondary ml-4 mb-3">
+                                    <h6 class="py-2 ml-4">
+                                       {{desc}}
+                                    </h6>
+                                </div>
+                                </div>
+                       </div>
+                </div>
+
+
+{% endblock %}
+
+{% block scripts %}
+    <!-- Bootstrap core JavaScript-->
+    <script src="{{url_for('static', filename='vendor/jquery/jquery.min.js')}}"></script>
+    <script src="{{url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js')}}"></script>
+
+    <!-- Core plugin JavaScript-->
+    <script src="{{url_for('static', filename='vendor/jquery-easing/jquery.easing.min.js')}}"></script>
+
+    <!-- Custom scripts for all pages-->
+    <script src="{{url_for('static', filename='js/sb-admin-2.min.js')}}"></script>
+
+    <!-- Page level plugins -->
+    <script src="{{url_for('static', filename='vendor/chart.js/Chart.min.js')}}"></script>
+
+    <!-- Page level custom scripts -->
+    <script src="{{url_for('static', filename='js/demo/chart-area-demo.js')}}"></script>
+    <script src="{{url_for('static', filename='js/demo/chart-pie-demo.js')}}"></script>
+{% endblock %}
