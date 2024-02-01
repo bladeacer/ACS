@@ -42,15 +42,15 @@
   </button>
 </div>
 {% endif %}
-  <h1 class="h3 mb-0 text-gray-800">Retrieve Staff</h1>
+  <h1 class="h3 mb-0 text-gray-800">Retrieve Product</h1>
 <div>
     <div>
-        Total Staff Users: {{ count }}
+        Total Products: {{ count }}
     </div>
     <div id="search_form">
-        <form method="POST" action="{{url_for('search_staff')}}">
-        <label for="staff_search">Search Product</label>
-        <input type="number" id="staff_search" name="user_search" placeholder="User ID" size="25" minlength="1" maxlength="150" required>
+        <form method="POST" action="{{url_for('retrieve_product')}}">
+        <label for="prod_search">Search Product</label>
+        <input type="number" id="prod_search" name="prod_search" placeholder="Product ID" size="25" minlength="1" maxlength="150" required>
         <input type="submit" value="Submit">
         </form>
     </div>
@@ -59,6 +59,7 @@
     <table class="table table-striped">
         <thead>
             <tr>
+                <th>Product ID</th>
                 <th>Image</th>
                 <th>Product Name</th>
                 <th>Unit Price</th>
@@ -70,19 +71,27 @@
         <tbody>
         {% for product in product_list %}
             <tr>
-                <td>
-                    <img src="{{ url_for('static', filename={{product.get_filename()}}) }}" alt="Product Image">
+                <td>{{product.get_prod_id()}}</td>
+                <td class="card">
+                    {% set path = url_for('uploaded_file', filename=product.get_filename()) %}
+                    <img src="{{ path }}" alt="Product Image" class="card-body img-fluid">
                 </td>
                 <td>{{product.get_name()}}</td>
-                <td>{{product.get_price()}}</td>
+                <td>${{product.get_price()}}</td>
+                <td>{{product.get_description()}}</td>
                 <td>{{product.get_count()}}</td>
-                <td>{{product.get_is_stock()}}</td>
+                <td> {% if product.get_is_stock() %}
+                        Yes
+                    {% else: %}
+                        No
+                    {% endif %}
+                </td>
 
-                <td><a href="/updateProduct/{{product.get_prod_id()}}" class="btn btn-warning">Update</a></td>
+                <td><a href="/updateProduct/{{product.get_prod_id()}}" class="btn btn-warning">Update</a> <br></td>
                 <td>
                     <form action="url_for('delete_product', user_id={{product.get_prod_id()}}" method="POST">
                         <input type="submit" value="Delete" class="btn btn-danger"
-                               onclick="return confirm('Are you sure you want to delete {{product.get_name()}} (Product ID:{{product.get_prod_id()}})?');">
+                               onclick="return confirm('Are you sure you want to delete product {{product.get_name()}} (Product ID:{{product.get_prod_id()}})?');">
                     </form>
                 </td>
             </tr>

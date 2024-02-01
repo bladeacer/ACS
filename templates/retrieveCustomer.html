@@ -66,8 +66,7 @@
                 <th>Gender</th>
                 <th>Phone Number</th>
                 <th>Mailing Address</th>
-                <th></th>
-                <th></th>
+                <th>Referral</th>
             </tr>
         </thead>
         <tbody>
@@ -80,6 +79,7 @@
                 <td>{{ customer.get_gender() }}</td>
                 <td>{{ customer.get_phone_number() }}</td>
                 <td>{{ customer.get_mailing_address() }}</td>
+                <td> {{ customer.get_referral()}}</td>
                 <td>
                     <form action="{{url_for('delete_customer', user_id=customer.get_user_id())}}" method="POST">
                         <input type="submit" value="Delete" class="btn btn-danger"

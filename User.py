@@ -68,10 +68,12 @@ class Customer(User):
             password,
             gender="",
             phone_number="",
-            mailing_address=""
+            mailing_address="",
+            referral=""
     ):
         super().__init__(user_id, name, email, password, gender, phone_number, mailing_address)
         self.__customer_id = customer_id
+        self.__referral = referral
 
     def set_customer_id(self, customer_id):
         self.__customer_id = customer_id
@@ -79,9 +81,16 @@ class Customer(User):
     def get_customer_id(self):
         return str(self.__customer_id)
 
+    def set_referral(self, referral):
+        self.__referral = referral
+
+    def get_referral(self):
+        return self.__referral
+
     def __str__(self):
         return (f"{self.get_user_id()}, {self.get_customer_id()}, {self.get_name()}, {self.get_email()}, "
-                f"{self.get_password()}, {self.get_gender()}, {self.get_phone_number()}, {self.get_mailing_address()}")
+                f"{self.get_password()}, {self.get_gender()}, {self.get_phone_number()}, {self.get_mailing_address()}, "
+                f"{self.get_referral()}")
 
 
 class Staff(User):
@@ -155,7 +164,6 @@ class Product:
         self.__is_stock = is_stock
         self.__prod_id = prod_id
         self.__filename = filename
-        # TODO: Add product images and shenanigans?
 
     def get_name(self):
         return self.__name

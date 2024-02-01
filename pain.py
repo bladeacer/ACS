@@ -35,7 +35,6 @@ def login():
     user_db.close()
     return render_template("login.html", title="Admin login", form=create_login_form,
                            msg=msg, sh_msg=sh_msg)
-    # TODO: creates checking against db
 
 
 @app.route("/home")
@@ -43,7 +42,7 @@ def home():
     staff_id = session["id"]
     referral_route = request.args.get("referral_route")
     if referral_route == "login":
-        ge
+        pass
     user_db = shelve.open('users.db', 'c')
 
     if str(staff_id).isdigit():
@@ -74,7 +73,6 @@ def home():
     earnings = session["details"][3]
     monthly_earnings = session["details"][4]
     session["details"] = []
-    # TODO: Connect Code to render charts to backend
     data1 = 50
     data2 = 34
     data3 = 27

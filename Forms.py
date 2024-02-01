@@ -1,8 +1,10 @@
-from wtforms import (Form, TelField, DateField, StringField, SelectField, validators,
+from wtforms import (TelField, DateField, StringField, SelectField, validators,
                      PasswordField, EmailField, FileField, TextAreaField, IntegerField)
 
+from flask_wtf import FlaskForm
 
-class CreateCustomerForm(Form):
+
+class CreateCustomerForm(FlaskForm):
     name = StringField('Name', [validators.Length(min=1, max=150), validators.DataRequired()])
     email = EmailField('Email', [validators.Length(min=1, max=150), validators.DataRequired()])
     password = PasswordField('Password', [validators.Length(min=8, max=150), validators.DataRequired()])
@@ -23,6 +25,15 @@ class CreateCustomerForm(Form):
         'Mailing Address',
         [validators.Length(min=1, max=150), validators.DataRequired()]
     )
+    referral = SelectField("Referral:", [validators.DataRequired()],
+                           choices=[
+                               ("", "Select"),
+                               ("Direct", "Direct"),
+                               ("Social", "Social"),
+                               ("Referral", "Referral")
+                           ],
+                           default="",
+                           )
 
 
 class CreateStaffForm(CreateCustomerForm):
@@ -76,20 +87,31 @@ class UpdateStaffForm(CreateStaffForm):
     new_total_earnings = StringField('New Total Earnings  $', [validators.Length(min=1, max=150)], default="0.00")
 
 
-class LoginForm(Form):
+class LoginForm(FlaskForm):
     email = EmailField("Email", [validators.DataRequired(), validators.Length(min=1, max=150)])
     password = PasswordField("Password", [validators.DataRequired(), validators.Length(8, 150)])
 
 
-class InputUserForm(Form):
+class InputUserForm(FlaskForm):
     user_details = TextAreaField("Enter details here:", [validators.DataRequired()])
 
 
-class ProductForm(Form):
+class ProductForm(FlaskForm):
     name = StringField("Enter product name: ", [validators.Length(min=1, max=150), validators.DataRequired()])
     price = StringField('Enter price ($): ', [validators.Length(min=1, max=150), validators.DataRequired()],
-                                 default="0.00")
+                        default="0.00")
     description = StringField("Enter description: ", [validators.Length(1, 1000), validators.DataRequired()])
     count = IntegerField("Enter stock count: ", [validators.DataRequired(), validators.NumberRange(1, 10000)])
-    image = FileField("Insert product image: ", [validators.DataRequired()])
+    image = FileField("Insert product image: ", [validators.DataRequired()], name="image")
     filename = StringField("Enter filename: ", [validators.Optional(), validators.Length(1, 150)])
+
+
+class UpdateProductForm(ProductForm):
+    name = StringField("Enter new product name: ", [validators.Length(min=1, max=150), validators.DataRequired()])
+    price = StringField('Enter new price ($): ', [validators.Length(min=1, max=150), validators.DataRequired()],
+                        default="0.00")
+    description = StringField("Enter new description: ", [validators.Length(1, 1000), validators.DataRequired()])
+    count = IntegerField("Enter new stock count: ", [validators.DataRequired(), validators.NumberRange(1, 10000)])
+    image = FileField("Insert new product image: ", [validators.DataRequired()], name="image")
+    filename = StringField("Enter new filename: ", [validators.Optional(), validators.Length(1, 150)])
+

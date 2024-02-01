@@ -1,13 +1,15 @@
 """b"""
 import shelve
 import os
-from flask import Flask, render_template, request, redirect, url_for, session
-from Forms import CreateCustomerForm, CreateStaffForm, LoginForm, UpdateStaffForm, ProductForm
+from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
+from Forms import CreateCustomerForm, CreateStaffForm, LoginForm, UpdateStaffForm, ProductForm, UpdateProductForm
 from User import Customer, Staff, Product
 from werkzeug.utils import secure_filename
-from PIL import Image
-import io
+import cv2
+import random
+import string
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = '/static/uploads'
 
 
 def _staff_details():
@@ -57,16 +59,40 @@ def _session_name():
     return session["details"][0]
 
 
-def login_session_handler(staff_id: int = 0):
+def _login_session_handler(staff_id: int = 0):
     session.clear()
     app.config["Topbar"] = 1
     session["id"] = staff_id
 
 
+def _image_processing_fun(image_file, image_name, size: int, old_filename: str = ""):
+    allowed_chars = string.ascii_letters + string.digits
+
+    # Generate a random string of 5 characters
+    random_chars = "".join(random.choice(allowed_chars.lower()) for i in range(5))
+    unique_suffix = f"{random.randint(100, 999)}{random_chars}"
+    filename = secure_filename(image_name + f"{unique_suffix}.jpg").lower().replace(" ", "")  # Secure filename
+    image_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+
+    # Process image using OpenCV
+    img = cv2.imread(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert to RGB
+    img = cv2.resize(img, (size, size), interpolation=cv2.INTER_AREA)  # Resize
+    new_filename = filename.replace(".jpg", ".png")
+    cv2.imwrite(os.path.join(app.config['UPLOAD_FOLDER'], new_filename),
+                img)  # Save as PNG
+    os.chmod(os.path.join(app.config['UPLOAD_FOLDER'], new_filename), 0o644)
+    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    if old_filename != "":
+        os.remove(os.path.join(app.config["UPLOAD_FOLDER"], old_filename))
+
+    return new_filename
+
+
 @app.route("/", methods=['GET', 'POST'])
 def login():
     try:
-        login_session_handler()
+        _login_session_handler()
         referral_route = request.args.get("referral_route")
         if referral_route == "login":
             _alert_message("Invalid password or username", 1)
@@ -76,7 +102,7 @@ def login():
             _alert_message()
         create_login_form = LoginForm(request.form)
         with shelve.open('user.db', 'c') as user_db:
-            if request.method == "POST" and create_login_form.validate():
+            if request.method == "POST":
                 for staff in user_db["Staff"].values():
                     if (staff.get_email() == create_login_form.email.data and staff.get_password() ==
                             create_login_form.password.data):
@@ -96,7 +122,6 @@ def login():
 
 @app.route("/home")
 def home():
-    # TODO: Take chunk of code below and yeet it to all app route by encapsulating as function
     # TODO: Create product inventory, link up to charts etc.
     referral_route = request.args.get("referral_route")
     if referral_route == "login":
@@ -108,9 +133,19 @@ def home():
     earnings = session["details"][3]
     monthly_earnings = f"{float(earnings)/12:.2f}"
     progress = session["details"][5]
+    referral_chart = [0, 0, 0]
+    with shelve.open("user.db", "r") as user_db:
+        for customer in user_db["Customer"].values():
+            if customer.get_referral() == "Direct":
+                referral_chart[0] += 1
+            elif customer.get_referral() == "Social":
+                referral_chart[1] += 1
+            else:
+                referral_chart[2] += 1
 
-    # TODO: Connect Code to render charts to backend, do the bar chart code
-    pie_chart_data = [50, 34, 27]
+    # TODO: Connect Code to render area chart to backend (financial earnings etc), do the bar chart code
+    #
+    pie_chart_data = referral_chart
     area_chart_data = [0, 69420, 150000, 79825, 103159, 209475, 256081, 291080, 315000, 360000, 425000, 540000]
 
     return render_template("index.html", pie_chart_data=pie_chart_data, area_chart_data=area_chart_data, name=name,
@@ -139,9 +174,9 @@ def profile():
 @app.route('/createCustomer', methods=['GET', 'POST'])
 def create_customer():
     name = _session_name()
-
+    referral_route = request.args.get("referral_route")
     create_customer_form = CreateCustomerForm(request.form)
-    if request.method == "POST" and create_customer_form.validate():
+    if request.method == "POST":
         user_db = shelve.open('user.db', 'c')
         new_user_id = user_db["Last ID Used"][0] + 1
         new_customer_id = user_db["Last ID Used"][1] + 1
@@ -153,7 +188,8 @@ def create_customer():
             password=create_customer_form.password.data,
             gender=create_customer_form.gender.data,
             phone_number=create_customer_form.phone_number.data,
-            mailing_address=create_customer_form.mailing_address.data
+            mailing_address=create_customer_form.mailing_address.data,
+            referral=create_customer_form.referral.data
         )
         customer_dict = user_db["Customer"]
         customer_dict[str(new_user_id)] = customer
@@ -164,6 +200,10 @@ def create_customer():
     else:
         pass
         # TODO: Alert message for invalid create customer
+    if referral_route == "home":
+        _alert_message()
+    else:
+        pass
     return render_template('createCustomer.html', form=create_customer_form, message=_get_alert_msg(),
                            sh_msg=_get_sh_msg(), name=name)
 
@@ -245,7 +285,7 @@ def create_staff():
     if app.config["Route"] == "login":
         return redirect(url_for("login", referral_route="create_staff"))
     if request.method == 'POST':
-        # TODO: Make the validation stuff work
+        # TODO: Retrieve and compare emails
         user_db = shelve.open('user.db', 'c')
         staff_dict = user_db["Staff"]
         new_user_id = user_db["Last ID Used"][0] + 1
@@ -277,8 +317,6 @@ def create_staff():
 
     return render_template('createStaff.html', form=create_staff_form, message=_get_alert_msg(),
                            sh_msg=_get_sh_msg(), sh_topbar=app.config["Topbar"], footer=1)
-    # TODO: Check if email and password are already taken, if yes try again.
-    # TODO: So now createstaff works like update if we do not increment the ID by 1
 
 
 @app.route('/retrieveStaff')
@@ -391,7 +429,7 @@ def create_product():
     if referral_route == "login":
         _alert_message("Redirected from login page", 1)
     elif referral_route == "retrieve_product":
-        _alert_message("Redirected from retrieve product", 1)
+        pass
     elif referral_route == "home":
         _alert_message("Redirected from homepage", 1)
     else:
@@ -402,60 +440,59 @@ def create_product():
     try:
         prod_form = ProductForm(request.form)
         if request.method == "POST":
-            if 'image' not in request.files:
-                return "No image uploaded", 400
+            image_file = request.files["image"]
+            image_name = prod_form.filename.data
 
-            image = request.files['image']
-            filename = secure_filename(prod_form.filename.data)
+            img_comp = False
+            for img in app.config["UPLOADED_IMAGES"]:
+                if img == image_name:
+                    img_comp = True
+                else:
+                    continue
 
-            # Read the image contents as bytes to work with Pillow
-            image_bytes = image.read()
-
-            # Open the image from bytes using Pillow
-            img = Image.open(io.BytesIO(image_bytes))
-
-            # Downsize the image to 500x500 pixels, adjust filter based on PIL version
-            if hasattr(Image, "ANTIALIAS"):
-                resized_img = img.resize((500, 500), Image.ANTIALIAS)
+            if image_file and image_name and img_comp is False:
+                new_filename = _image_processing_fun(image_file, image_name, 150)
             else:
-                # Use alternative filter if ANTIALIAS is not available in your Pillow version
-                resized_img = img.resize((500, 500), Image.BILINEAR)
+                allowed_chars = string.ascii_letters + string.digits
+                image_name = "".join(random.choice(allowed_chars.lower()) for i in range(20))
+                new_filename = _image_processing_fun(image_file, image_name, 150)
+            app.config["UPLOADED_IMAGES"].append(new_filename)
+            _alert_message("Image upload successfully!", 1)
 
-            # Save the resized image
-            resized_img.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-
-            _alert_message("Image uploaded successfully!", 1)
-
-            user_db = shelve.open('user.db', 'c')
-            prod_dict = user_db["Product"]
-            new_product_id = user_db["Product Pointer"]+1
-            if int(prod_form.count.data) > 0:
-                is_stock = True
-            else:
-                is_stock = False
-            product = Product(prod_form.name.data,
-                              prod_form.price.data,
-                              new_product_id,
-                              prod_form.description.data,
-                              prod_form.count.data,
-                              is_stock,
-                              prod_form.filename.data
-                              )
-            prod_dict[product.get_prod_id()] = product
-            user_db["Product"] = prod_dict
-            user_db["Product Pointer"] = new_product_id
-            user_db.close()
-            return redirect(url_for("retrieve_product", referral_route="create_product"))
+            with shelve.open('user.db', 'c') as user_db:
+                prod_dict = user_db["Product"]
+                new_product_id = user_db["Product Pointer"]+1
+                if int(prod_form.count.data) > 0:
+                    is_stock = True
+                else:
+                    is_stock = False
+                product = Product(prod_form.name.data,
+                                  prod_form.price.data,
+                                  new_product_id,
+                                  prod_form.description.data,
+                                  prod_form.count.data,
+                                  is_stock,
+                                  new_filename
+                                  )
+                prod_dict[product.get_prod_id()] = product
+                user_db["Product"] = prod_dict
+                user_db["Product Pointer"] = new_product_id
+                return redirect(url_for("retrieve_product", referral_route="create_product"))
         elif referral_route == "create_product":
             _alert_message("Error in validating product form", 1)
             return redirect(url_for("create_product"))
 
-    except EOFError or KeyError:
+    except EOFError or KeyError or IOError:
         _alert_message("Error in product form", 1)
-        return redirect(url_for("retrieve_product", referral_route="update_product"))
+        return redirect(url_for("create_product", referral_route="create_product"))
 
     return render_template("createProduct.html", form=prod_form,
                            message=_get_alert_msg(), sh_msg=_get_sh_msg(), name=name)
+
+
+@app.route('/uploaded_file/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
 @app.route("/retrieveProduct")
@@ -468,15 +505,17 @@ def retrieve_product():
             product_list = []
             count = 0
             for product in user_db["Product"].values():
-                product.set_price(float(product.get_price()))
+                product.set_price(f"{float(product.get_price()):.2f}")
                 product_list.append(product)
 
                 count += 1
         if count != 0 and _get_alert_msg() == "Error in updating product":
             pass
 
-        elif count != 0 and referral_route == "update_staff":
+        elif count != 0 and referral_route == "update_product":
             _alert_message("Redirected from update product", 1)
+        elif count != 0 and referral_route == "create_product":
+            pass
         elif count != 0:
             _alert_message("Retrieve successful", 1)
         else:
@@ -487,12 +526,74 @@ def retrieve_product():
 
     except EOFError or KeyError:
         _alert_message("No product created yet, create one.", 1)
-        return redirect(url_for("create_product", referral_route="retrieve_product"))
+        return redirect(url_for("create_product", referral_route="retrieve_product", count=count))
 
 
 @app.route("/updateProduct/<int:prod_id>", methods=["GET", "POST"])
 def update_product(prod_id):
-    pass
+    name = _session_name()
+    try:
+        update_product_form = UpdateProductForm(request.form)
+        if request.method == "POST":
+            image_file = request.files["image"]
+            image_name = update_product_form.name.data
+            img_comp = False
+            for img in app.config["UPLOADED_IMAGES"]:
+                if img == image_name:
+                    img_comp = True
+                else:
+                    continue
+
+            with shelve.open("user.db", "c") as user_db:
+                prod_dict = user_db["Product"]
+                product = prod_dict.get(str(prod_id))
+                product.set_name(update_product_form.name.data)
+                product.set_price(update_product_form.price.data)
+                product.set_description(update_product_form.description.data)
+                product.set_count(update_product_form.count.data)
+                if int(update_product_form.count.data) > 0:
+                    product.set_is_stock(True)
+                else:
+                    product.set_is_stock(False)
+
+                old_filename = product.get_filename()
+
+                if image_file and image_name and img_comp is False:
+                    new_filename = _image_processing_fun(image_file, image_name, 150)
+                else:
+                    allowed_chars = string.ascii_letters + string.digits
+                    image_name = "".join(random.choice(allowed_chars.lower()) for i in range(20))
+                    new_filename = _image_processing_fun(image_file, image_name, 150)
+
+                os.remove(os.path.join(app.config['UPLOAD_FOLDER'], old_filename))
+
+                product.set_filename(new_filename)
+                for image, i in enumerate(app.config["UPLOADED_IMAGES"]):
+                    if image == old_filename:
+                        app.config["UPLOADED_IMAGES"][i] = new_filename
+                    else:
+                        continue
+                _alert_message("Image updated successfully!", 1)
+                prod_dict[str(prod_id)] = product
+                user_db["Product"] = prod_dict
+                # TODO: Update product functionality
+                return redirect(url_for("retrieve_product", referral_route="update_product"))
+        else:
+            with shelve.open("user.db", "r") as user_db:
+                prod_dict = user_db["Product"]
+            product = prod_dict[str(prod_id)]
+            update_product_form.name.data = product.get_name()
+            update_product_form.price.data = product.get_price()
+            update_product_form.description.data = product.get_description()
+            update_product_form.count.data = product.get_count()
+            stub = str(product.get_filename())
+            update_product_form.filename.data = stub[:-12]
+        return render_template("updateProduct.html", form=update_product_form,
+                               name=name, prod_id=prod_id)
+
+    except EOFError or KeyError:
+        _alert_message("Error in updating product", 1)
+        return redirect(url_for("retrieve_product", referral_route="update_product"))
 
 
 @app.route("/deleteProduct/<int:prod_id>", methods=["POST"])
@@ -500,8 +601,14 @@ def delete_product(prod_id):
     pass
 
 
-# TODO: Search product ???
+# TODO: Update and delete product, make images work
+# TODO: Changing a profile picture etc
+# TODO: Searching of stuff at all? ???
 # TODO: Create goofy "server is down maintenance notice page"
+# TODO: Report generation smh
+# TODO: Fix up the UI
+# TODO: Input excel file, render it and then ask if they want to store the details in the database.
+# TODO: Update Customer
 
 
 if __name__ == '__main__':
@@ -511,7 +618,9 @@ if __name__ == '__main__':
     app.config["No"] = ""
     app.config["Route"] = ""
     app.config["Topbar"] = 0
-    app.config['UPLOAD_FOLDER'] = 'uploads'
+    app.config['UPLOAD_FOLDER'] = 'static/uploads'  # Set upload folder
+    app.config["UPLOADED_IMAGES"] = []
+
     try:
         with shelve.open('user.db', 'c') as user_database:
             if not user_database:
@@ -520,8 +629,6 @@ if __name__ == '__main__':
                 user_database["Product"] = {}
                 user_database["Last ID Used"] = [0, 0, 0]  # [Users, Customers, Staff]
                 user_database["Product Pointer"] = 0  # used to create unique product ids
-                # TODO: Use the product pointer e
-
     except KeyError or IOError or UnboundLocalError or EOFError as database_error:
         print("Error encountered opening user.db:", database_error)
     app.run(debug=True)
