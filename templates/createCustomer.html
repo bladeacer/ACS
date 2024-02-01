@@ -1,0 +1,50 @@
+{% extends "user_database_base.html" %}
+{% block title %}Amsyar's Card Shop - Create Customer{% endblock %}
+
+{% block content %}
+{% from "includes/_acs_formHelper.html" import render_field %}
+<style>
+  #submit {
+    margin-top: 5px
+  }
+  .error {
+    color: red;
+  }
+</style>
+<script src="static/showPassword.js"></script>
+<h1 class="display-4">Create Customer</h1>
+<form method="POST" action="">
+  <div class="form-group">
+    {{ render_field(form.name, class="form-control") }}
+  </div>
+  <div class="form-group">
+    {{ render_field(form.email, class="form-control") }}
+  </div>
+  <span class="error">{{ email_error }}</span>
+  <div class="form-group">
+    {{ render_field(form.password, class="form-control") }}
+  </div>
+  <input type="checkbox" onclick="showPassword()">Show Password
+  {% if password_errors %}
+  <div class="error">
+    <ul>
+      {% for error in password_errors %}
+        <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  <div class="form-group">
+    {{ render_field(form.gender, class="form-control") }}
+  </div>
+  <div class="form-group">
+    {{ render_field(form.phone_number, class="form-control") }}
+  </div>
+  <div class="form-group">
+    {{ render_field(form.mailing_address, class="form-control") }}
+  </div>
+  <input type="submit" value="Submit" class="btn btn-primary"/>
+  <input type="reset" value="Reset" class="btn btn-danger">
+</form>
+
+{% endblock %}

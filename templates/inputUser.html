@@ -1,0 +1,39 @@
+{% extends "user_database_base.html" %}
+{% block title %}Amsyar's Card Shop - Input {{ user }}{% endblock %}
+
+{% block content %}
+{% from "includes/_acs_formHelper.html" import render_field %}
+<style>
+    .error ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .error ul li::before {
+        content: '-';
+        margin: 0 5px 0 10px;
+    }
+
+    #submit {
+        margin-top: 10px
+    }
+</style>
+<h1 class="display-4">Input {{ user }}</h1>
+<form method="POST" action="">
+    <div class="form-group">
+        {{ render_field(form.user_details, class="form-control") }}
+    </div>
+    {% if error_list %}
+    <div class="error">
+        <span>Errors encountered while inputting {{ user }}:</span>
+        <ul>
+            {% for error_line, errors in error_list %}
+                <li>Line {{ error_line }}: {{ errors }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    <input type="submit" value="Submit" class="btn btn-primary" id="submit"/>
+</form>
+{% endblock %}
