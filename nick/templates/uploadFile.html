@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block title %}
-    Amsyar's Card Shop Admin - Create Product
+    Amsyar's Card Shop Admin - Upload Data File
 {% endblock %}
 
 {% block styles %}
@@ -31,6 +31,10 @@
     {{name}}
 {% endblock %}
 
+{% block settings %}
+    updateStaff/{{user_id}}
+{% endblock %}
+
 {% block content %}
 {% from "includes/_formHelper.html" import render_field %}
 
@@ -42,49 +46,19 @@
   </button>
 </div>
 {% endif %}
-<h1 class="h3 mb-0 text-gray-800">Create Product</h1>
+<h1 class="h3 mb-0 text-gray-800">Upload Data File</h1>
 
-<form method="POST" action="/createProduct" enctype="multipart/form-data">
+<form method="POST" action="/uploadData" enctype="multipart/form-data">
   <div class="form-group">
-    {{ render_field(form.name, class="form-control") }}
+    {{ render_field(form.filename, class="form-control") }}
   </div>
   <div class="form-group">
-    {{ render_field(form.price, class="form-control") }}
+    {{ render_field(form.file, class="form-control-sm", type="file", id="file", accept=".csv, .xlsx") }}
   </div>
   <div class="form-group">
-    {{ render_field(form.description, class="form-control") }}
-  </div>
-  <div class="form-group">
-    {{ render_field(form.count, class="form-control") }}
-  </div>
-        <script>
-    function previewImage() {
-        const imageInput = document.getElementById('image');
-        const preview = document.getElementById('image-preview');
-
-        const reader = new FileReader();
-
-        reader.onload = (e) => {
-            preview.src = e.target.result;
-        };
-
-        reader.readAsDataURL(imageInput.files[0]);
-    }
-    </script>
-  <div class="form-group">
-    {{ render_field(form.image, class="form-control-sm", type="file", id="file", accept="image/*") }}
-<!--        <div class="card" style="width: 250px">-->
-<!--          <div class="card-body">-->
-<!--              <p class="card-text text-center">Image Preview</p>-->
-<!--          </div>-->
-<!--            <img src="{{ path }}" alt="Image Preview" class="img-fluid card-img-bottom" id="image-preview">-->
-<!--        </div>-->
+    {{ render_field(form.database, class="form-control") }}
   </div>
 
-    <div class="form-group">
-        {{ render_field(form.filename, class="form-control")}}
-    </div>
-    <br>
   <input type="submit" value="Submit" class="btn btn-primary">
   <input type="reset" value="Reset" class="btn btn-danger">
 </form>

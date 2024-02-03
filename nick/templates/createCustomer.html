@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block title %}
-    Amsyar's Card Shop Admin - Retrieve Customer
+    Amsyar's Card Shop Admin - Create User
 {% endblock %}
 
 {% block styles %}
@@ -31,6 +31,10 @@
     {{ name }}
 {% endblock %}
 
+{% block settings %}
+    updateStaff/{{user_id}}
+{% endblock %}
+
 {% block content %}
 {% from "includes/_formHelper.html" import render_field %}
 
@@ -42,57 +46,33 @@
   </button>
 </div>
 {% endif %}
-  <h1 class="h3 mb-0 text-gray-800">Retrieve Customer</h1>
-<div>
-    <div>
-        Total Customer Users: {{ count }}
-    </div>
-    <div id="search_form">
-        <form method="POST" action="{{url_for('search_customer')}}">
-        <label for="customer_search">Search Customer</label>
-        <input id="customer_search" name="user_search" placeholder="Search" size="25" minlength="1" maxlength="150" required>
-        <input type="submit" value="Submit">
-        </form>
-    </div>
-
-</div>
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>User ID</th>
-                <th>Customer ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Gender</th>
-                <th>Phone Number</th>
-                <th>Mailing Address</th>
-                <th>Referral</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for customer in customer_list %}
-            <tr>
-                <td> {{customer.get_user_id()}} </td>
-                <td>{{ customer.get_customer_id() }}</td>
-                <td>{{ customer.get_name() }}</td>
-                <td>{{ customer.get_email() }}</td>
-                <td>{{ customer.get_gender() }}</td>
-                <td>{{ customer.get_phone_number() }}</td>
-                <td>{{ customer.get_mailing_address() }}</td>
-                <td> {{ customer.get_referral()}}</td>
-                <td>
-                    <form action="{{url_for('delete_customer', user_id=customer.get_user_id())}}" method="POST">
-                        <input type="submit" value="Delete" class="btn btn-danger"
-                               onclick="return confirm('Are you sure you want to delete {{customer.get_name()}} (User ID:{{customer.get_user_id()}})?');">
-                    </form>
-                </td>
-                <td></td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-
-
+  <h1 class="h3 mb-0 text-gray-800">Create Customer</h1>
+    <form method="POST" action="">
+      <div class="form-group">
+        {{ render_field(form.name, class="form-control") }}
+      </div>
+      <div class="form-group">
+        {{ render_field(form.email, class="form-control") }}
+      </div>
+      <div class="form-group">
+        {{ render_field(form.password, class="form-control") }}
+      </div>
+      <div class="form-group">
+        {{ render_field(form.gender, class="form-control") }}
+      </div>
+      <div class="form-group">
+        {{ render_field(form.phone_number, class="form-control") }}
+      </div>
+      <div class="form-group">
+        {{ render_field(form.mailing_address, class="form-control") }}
+      </div>
+      <div class="form-group">
+        {{ render_field(form.referral, class="form-control") }}
+      </div>
+        <br>
+      <input type="submit" value="Submit" class="btn btn-primary"/>
+      <input type="reset" value="Reset" class="btn btn-danger">
+    </form>
 {% endblock %}
 
 {% block scripts %}

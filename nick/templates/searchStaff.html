@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block title %}
-    Amsyar's Card Shop Admin - Search Customer
+    Amsyar's Card Shop Admin - Search Staff
 {% endblock %}
 
 {% block styles %}
@@ -29,6 +29,10 @@
 
 {% block name %}
     {{ name }}
+{% endblock %}#
+
+{% block settings %}
+    updateStaff/{{user_id}}
 {% endblock %}
 
 {% block header %}
@@ -41,25 +45,30 @@
 {% endblock %}
 
 {% block content %}
-<h1 class="h3 mb-0 text-gray-800">Search Customer</h1>
+
+
+<h1 class="h3 mb-0 text-gray-800">Search Staff</h1>
 <div>
     <div id="search_form">
-        <form method="POST" action="{{url_for('search_customer')}}">
-        <label for="customer_search">Search Customer</label>
-        <input id="customer_search" name="user_search" placeholder="Search" size="25" minlength="1" maxlength="150" required>
+        <form method="POST" action="{{url_for('search_staff')}}">
+        <label for="staff_search">Search Staff</label>
+        <input type="number" id="staff_search" name="user_search" placeholder="User ID" size="25" minlength="1" maxlength="150" required>
         <input type="submit" value="Submit">
         </form>
     </div>
-    <a href="/retrieveCustomer" id="show_all"><input type="submit" value="Show All"></a>
+    <a href="/retrieveStaff" id="show_all"><input type="submit" value="Show All"></a>
 </div>
 <div>
     <table class="table table-striped">
         <thead>
             <tr>
                 <th>User ID</th>
-                <th>Customer ID</th>
+                <th>Staff ID</th>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Start Date</th>
+                <th>Position</th>
+                <th>Total Earnings</th>
                 <th>Gender</th>
                 <th>Phone Number</th>
                 <th>Mailing Address</th>
@@ -68,25 +77,29 @@
             </tr>
         </thead>
         <tbody>
-        {% if customer %}
+        {% if staff %}
             <tr>
-                <td>{{ customer.get_user_id() }}</td>
-                <td>{{ customer.get_customer_id() }}</td>
-                <td>{{ customer.get_name() }}</td>
-                <td>{{ customer.get_email() }}</td>
-                <td>{{ customer.get_gender() }}</td>
-                <td>{{ customer.get_phone_number() }}</td>
-                <td>{{ customer.get_mailing_address() }}</td>
+                <td>{{ staff.get_user_id() }}</td>
+                <td>{{ staff.get_staff_id() }}</td>
+                <td>{{ staff.get_name() }}</td>
+                <td>{{ staff.get_email() }}</td>
+                <td>{{ staff.get_start_date() }}</td>
+                <td>{{ staff.get_position() }}</td>
+                <td>${{ staff.get_total_earnings() }}</td>
+                <td>{{ staff.get_gender() }}</td>
+                <td>{{ staff.get_phone_number() }}</td>
+                <td>{{ staff.get_mailing_address() }}</td>
+                <td><a href="/updateStaff/{{staff.get_user_id()}}" class="btn btn-warning">Update</a></td>
                 <td>
-                    <form action="{{url_for('delete_customer', user_id=customer.get_user_id())}}" method="POST">
-                        <input type="submit" value="Delete" class="btn btn-danger">
+                    <form action="{{url_for('delete_staff', user_id=staff.get_user_id())}}" method="POST">
+                        <input type="submit" value="Delete" class="btn btn-danger"
+                               onclick="return confirm('Are you sure you want to delete {{staff.get_name()}} (User ID:{{staff.get_user_id()}})?');">
                     </form>
                 </td>
-                <td></td>
             </tr>
         {% else %}
             <tr>
-                <td>No customers found</td>
+                <td>No staff found</td>
                 <td></td>
                 <td></td>
                 <td></td>

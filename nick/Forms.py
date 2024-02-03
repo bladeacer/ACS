@@ -73,7 +73,7 @@ class UpdateStaffForm(CreateStaffForm):
     new_mailing_address = StringField('New Mailing Address', [validators.Length(min=1, max=150)])
     new_start_date = DateField('New Start Date')
     new_position = SelectField(
-        'New Position',
+        'New Position', [validators.DataRequired()],
         choices=[
             ('', 'Select'),
             ('Front-end Developer', 'Front-end Developer'),
@@ -115,3 +115,16 @@ class UpdateProductForm(ProductForm):
     image = FileField("Insert new product image: ", [validators.DataRequired()], name="image")
     filename = StringField("Enter new filename: ", [validators.Optional(), validators.Length(1, 150)])
 
+
+class UploadDataFile(FlaskForm):
+    filename = StringField("Enter filename: ", [validators.DataRequired()])
+    file = FileField("Insert Excel or csv file: ", [validators.DataRequired()], name="data_file")
+    database = SelectField(
+        'Database to append to: ', [validators.DataRequired()],
+        choices=[
+            ('', 'Select'),
+            ('Customer', 'Customer'),
+            ('Staff', 'Staff'),
+        ],
+        default='',
+    )

@@ -1,15 +1,18 @@
 """b"""
 import shelve
 import os
-from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
-from Forms import CreateCustomerForm, CreateStaffForm, LoginForm, UpdateStaffForm, ProductForm, UpdateProductForm
+from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory, Response
+from Forms import (CreateCustomerForm, CreateStaffForm, LoginForm, UpdateStaffForm, ProductForm, UpdateProductForm,
+                   UploadDataFile)
 from User import Customer, Staff, Product
 from werkzeug.utils import secure_filename
 import cv2
 import random
 import string
+import weasyprint
+import pandas as pd
+import numpy as np
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = '/static/uploads'
 
 
 def _staff_details():
@@ -61,7 +64,6 @@ def _session_name():
 
 def _login_session_handler(staff_id: int = 0):
     session.clear()
-    app.config["Topbar"] = 1
     session["id"] = staff_id
 
 
@@ -76,7 +78,6 @@ def _image_processing_fun(image_file, image_name, size: int, old_filename: str =
 
     # Process image using OpenCV
     img = cv2.imread(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert to RGB
     img = cv2.resize(img, (size, size), interpolation=cv2.INTER_AREA)  # Resize
     new_filename = filename.replace(".jpg", ".png")
     cv2.imwrite(os.path.join(app.config['UPLOAD_FOLDER'], new_filename),
@@ -87,6 +88,95 @@ def _image_processing_fun(image_file, image_name, size: int, old_filename: str =
         os.remove(os.path.join(app.config["UPLOAD_FOLDER"], old_filename))
 
     return new_filename
+
+
+def _parse_files_db(database_key, data_file, data_name, old_filename):
+    allowed_chars = string.ascii_letters + string.digits
+    random_chars = "".join(random.choice(allowed_chars.lower()) for i in range(5))
+    unique_suffix = f"{random.randint(100, 999)}{random_chars}"
+
+    filename = secure_filename(data_name + f"{unique_suffix}.csv").lower().replace(" ", "")
+    filename = os.path.join(app.config["DATAFILE_FOLDER"], filename)
+
+    if old_filename.endswith(".xlsx"):
+        df = pd.read_excel(data_file, header=None)
+    else:
+        df = pd.read_csv(data_file, header=None)
+    df.to_csv(filename, index=False)  # Convert Excel to CSV
+
+    df = pd.read_csv(filename)
+
+    with (shelve.open('user.db', 'c') as user_db):
+        rows = df.shape[0]
+        cols = df.shape[1]
+        if database_key == "Staff" and cols == 12:
+            df.columns = ["Name", "Email", "Password", "Start Date", "Position", "Total Earnings", "Gender",
+                          "Phone Number", "Mailing Address", "Progress", "Requests", "Self Description"]
+            user_ids = np.array([])
+            staff_ids = np.array([])
+
+            for i in range(rows):
+                user_ids = np.append(user_ids, user_db["Last ID Used"][0] + i + 1)
+                staff_ids = np.append(staff_ids, user_db["Last ID Used"][2] + i + 1)
+
+            user_db["Last ID Used"] = [user_db["Last ID Used"][0] + rows + 1, user_db["Last ID Used"][1],
+                                       user_db["Last ID Used"][2] + rows + 1]
+
+            user_ids = user_ids.astype(int)
+
+            df.insert(loc=0, column='User ID', value=user_ids)
+            df.insert(loc=1, column="Staff ID", value=staff_ids)
+
+            user_ids = list(map(str, user_ids))
+
+            df = df.iloc[1:]
+            rows = df.shape[0]
+            data_items = []
+            for a in range(rows):
+                mini_li = df.iloc[a].tolist()
+                data = Staff(mini_li[0], mini_li[1], mini_li[2], mini_li[2], mini_li[4],
+                             mini_li[5], mini_li[6], mini_li[7], mini_li[8], mini_li[9], mini_li[10],
+                             mini_li[11])
+                data_items.append(data)
+        elif database_key == "Customer" and cols == 7:
+            df.columns = ["Name", "Email", "Password", "Gender", "Phone Number", "Mailing Address",
+                          "Referral"]
+
+            user_ids = np.array([])
+            customer_ids = np.array([])
+
+            for i in range(rows):
+                user_ids = np.append(user_ids, user_db["Last ID Used"][0] + i + 1)
+                customer_ids = np.append(customer_ids, user_db["Last ID Used"][1] + i + 1)
+
+            user_db["Last ID Used"] = [user_db["Last ID Used"][0] + rows + 1, user_db["Last ID Used"][1] + rows + 1,
+                                       user_db["Last ID Used"][2]]
+
+            user_ids = user_ids.astype(int)
+
+            df.insert(loc=0, column='User ID', value=user_ids)
+            df.insert(loc=1, column="Customer ID", value=customer_ids)
+
+            user_ids = list(map(str, user_ids))
+
+            df = df.iloc[1:]
+            rows = df.shape[0]
+            data_items = []
+
+            for a in range(rows):
+                stub = df.iloc[a].tolist()
+                data = Customer(stub[0], stub[1], stub[2], stub[3], stub[4], stub[5], stub[6], stub[7], stub[8])
+                data_items.append(data)
+
+        else:
+            return EOFError
+
+        existing_data = user_db.get(database_key, [])
+        for i in range(rows):
+            existing_data[user_ids[i]] = data_items[i]
+        user_db[database_key] = existing_data
+
+    return filename
 
 
 @app.route("/", methods=['GET', 'POST'])
@@ -110,6 +200,7 @@ def login():
                         start_date = staff.get_start_date()
                         staff.set_start_date(f"{start_date.day}/{start_date.month}/{start_date.year}")
                         session["id"] = staff.get_staff_id()
+                        session["user_id"] = staff.get_user_id()
                         return redirect(url_for("home"))
                     else:
                         pass
@@ -122,11 +213,11 @@ def login():
 
 @app.route("/home")
 def home():
-    # TODO: Create product inventory, link up to charts etc.
+    # TODO: Link up product purchase details to charts etc.
     referral_route = request.args.get("referral_route")
-    if referral_route == "login":
+    url_fun = request.url
+    if referral_route == "login" or "retrieve" in url_fun or "create" in url_fun:
         _alert_message()
-
     _staff_details()
     name = _session_name()
     requests = session["details"][2]
@@ -136,26 +227,33 @@ def home():
     referral_chart = [0, 0, 0]
     with shelve.open("user.db", "r") as user_db:
         for customer in user_db["Customer"].values():
-            if customer.get_referral() == "Direct":
-                referral_chart[0] += 1
-            elif customer.get_referral() == "Social":
-                referral_chart[1] += 1
-            else:
-                referral_chart[2] += 1
+            try:
+                if customer.get_referral() == "Direct":
+                    referral_chart[0] += 1
+                elif customer.get_referral() == "Social":
+                    referral_chart[1] += 1
+                else:
+                    referral_chart[2] += 1
+            except AttributeError:
+                return redirect(url_for("create_customer", referral_route="home"))
 
     # TODO: Connect Code to render area chart to backend (financial earnings etc), do the bar chart code
     #
     pie_chart_data = referral_chart
     area_chart_data = [0, 69420, 150000, 79825, 103159, 209475, 256081, 291080, 315000, 360000, 425000, 540000]
+    user_id = session["user_id"]
 
-    return render_template("index.html", pie_chart_data=pie_chart_data, area_chart_data=area_chart_data, name=name,
-                           progress=progress, requests=requests, earnings=earnings, monthly_earnings=monthly_earnings)
+    return render_template("index.html", pie_chart_data=pie_chart_data, area_chart_data=area_chart_data,
+                           name=name, progress=progress, requests=requests, earnings=earnings,
+                           monthly_earnings=monthly_earnings, message=_get_alert_msg(), sh_msg=_get_sh_msg(),
+                           user_id=user_id)
 
 
 @app.route("/profile")
 def profile():
     _staff_details()
     staff_id = session["id"]
+    user_id = session["user_id"]
     name = _session_name()
     experience = session["details"][1]
     requests = session["details"][2]
@@ -168,12 +266,13 @@ def profile():
 
     return render_template("profile.html", name=name, experience=experience, requests=requests,
                            earnings=earnings, email=email, connections=connections, desc=desc, number=number,
-                           staff_id=staff_id, position=position)
+                           staff_id=staff_id, position=position, user_id=user_id)
 
 
 @app.route('/createCustomer', methods=['GET', 'POST'])
 def create_customer():
     name = _session_name()
+    user_id = session["user_id"]
     referral_route = request.args.get("referral_route")
     create_customer_form = CreateCustomerForm(request.form)
     if request.method == "POST":
@@ -197,20 +296,16 @@ def create_customer():
         user_db["Last ID Used"] = [new_user_id, new_customer_id, user_db["Last ID Used"][2]]
         user_db.close()
         return redirect(url_for("retrieve_customer", referral_route="create_customer"))
-    else:
-        pass
-        # TODO: Alert message for invalid create customer
     if referral_route == "home":
         _alert_message()
-    else:
-        pass
     return render_template('createCustomer.html', form=create_customer_form, message=_get_alert_msg(),
-                           sh_msg=_get_sh_msg(), name=name)
+                           sh_msg=_get_sh_msg(), name=name, user_id=user_id)
 
 
 @app.route('/retrieveCustomer')
 def retrieve_customer():
     name = _session_name()
+    user_id = session["user_id"]
 
     referral_route = request.args.get("referral_route")
     try:
@@ -223,7 +318,7 @@ def retrieve_customer():
         if referral_route == "create_customer" or "home":
             _alert_message("Retrieve successful", 1)
         return render_template('retrieveCustomer.html', count=count, customer_list=customer_list,
-                               message=_get_alert_msg(), sh_msg=_get_sh_msg(), name=name)
+                               message=_get_alert_msg(), sh_msg=_get_sh_msg(), name=name, user_id=user_id)
     except KeyError:
         _alert_message("Error retrieving customer", 1)
         return redirect(url_for("create_customer", referral_route="retrieve_customer"))
@@ -232,6 +327,7 @@ def retrieve_customer():
 @app.route('/searchCustomer', methods=['POST'])
 def search_customer():
     name = _session_name()
+    user_id = session["user_id"]
 
     user_search_item = request.get_data(as_text=True)[12:]
     with shelve.open("user.db", "c") as user_db:
@@ -242,18 +338,19 @@ def search_customer():
             pass
         else:
             return render_template('searchCustomer.html', customer=None, name=name)
-    return render_template('searchCustomer.html', name=name)
+    return render_template('searchCustomer.html', name=name, user_id=user_id)
 
 
 @app.route('/deleteCustomer/<int:user_id>', methods=['POST'])
 def delete_customer(user_id):
     name = _session_name()
+    use_id = session["user_id"]
 
     with shelve.open('user.db', 'w') as user_db:
         temporary_dict = user_db['Customer']
         temporary_dict.pop(str(user_id))
         user_db["Customer"] = temporary_dict
-    return redirect(url_for('retrieve_customer', referral_route="delete_customer", name=name))
+    return redirect(url_for('retrieve_customer', referral_route="delete_customer", name=name, user_id=use_id))
 
 
 @app.route('/clearCustomer')
@@ -267,23 +364,20 @@ def clear_customer():
 
 @app.route('/createStaff', methods=['GET', 'POST'])
 def create_staff():
+    user_id = session["user_id"]
+    name = _session_name()
 
     create_staff_form = CreateStaffForm(request.form)
     referral_route = request.args.get("referral_route")
     if referral_route == "login":
         _alert_message("Redirected from login page", 1)
-        app.config["Topbar"] = 0
+        return redirect(url_for("login", referral_route="create_staff"))
     elif referral_route == "retrieve_staff":
         _alert_message("Redirected from retrieve staff", 1)
-        app.config["Topbar"] = 0
     elif referral_route == "home":
         _alert_message("Redirected from homepage", 1)
-        app.config["Topbar"] = 0
     else:
         _alert_message()
-        app.config["Topbar"] = 0
-    if app.config["Route"] == "login":
-        return redirect(url_for("login", referral_route="create_staff"))
     if request.method == 'POST':
         # TODO: Retrieve and compare emails
         user_db = shelve.open('user.db', 'c')
@@ -316,12 +410,13 @@ def create_staff():
         return redirect(url_for("create_staff"))
 
     return render_template('createStaff.html', form=create_staff_form, message=_get_alert_msg(),
-                           sh_msg=_get_sh_msg(), sh_topbar=app.config["Topbar"], footer=1)
+                           sh_msg=_get_sh_msg(), user_id=user_id, name=name)
 
 
 @app.route('/retrieveStaff')
 def retrieve_staff():
     name = _session_name()
+    user_id = session["user_id"]
 
     try:
         referral_route = request.args.get("referral_route")
@@ -347,7 +442,7 @@ def retrieve_staff():
             _alert_message("No staff created yet, create one.", 1)
             return redirect(url_for("create_staff", referral_route="retrieve_staff"))
         return render_template('retrieveStaff.html', count=count, staff_list=staff_list,
-                               message=_get_alert_msg(), sh_msg=_get_sh_msg(), name=name)
+                               message=_get_alert_msg(), sh_msg=_get_sh_msg(), name=name, user_id=user_id)
     except EOFError or KeyError:
         _alert_message("No staff created yet, create one.", 1)
         return redirect(url_for("create_staff", referral_route="retrieve_staff"))
@@ -356,6 +451,7 @@ def retrieve_staff():
 @app.route('/searchStaff', methods=['POST'])
 def search_staff():
     name = _session_name()
+    user_id = session["user_id"]
 
     user_search_item = int(request.get_data(as_text=True)[12:])
     with shelve.open("user.db", "r") as user_db:
@@ -366,13 +462,14 @@ def search_staff():
             start_date = staff.get_start_date()
             staff.set_start_date(f"{start_date.day}/{start_date.month}/{start_date.year}")
         else:
-            return render_template('searchStaff.html', staff=None, name=name)
-    return render_template('searchStaff.html', staff=staff, name=name)
+            staff = None
+    return render_template('searchStaff.html', staff=staff, name=name, user_id=user_id)
 
 
 @app.route('/updateStaff/<int:user_id>', methods=['GET', 'POST'])
 def update_staff(user_id):
     name = _session_name()
+    use_id = session["user_id"]
 
     try:
         update_staff_form = UpdateStaffForm(request.form)
@@ -405,7 +502,7 @@ def update_staff(user_id):
             update_staff_form.new_gender.data = staff.get_gender()
             update_staff_form.new_phone_number.data = int(staff.get_phone_number())
             update_staff_form.new_mailing_address.data = staff.get_mailing_address()
-        return render_template('updateStaff.html', form=update_staff_form, name=name)
+        return render_template('updateStaff.html', form=update_staff_form, name=name, user_id=use_id)
 
     except EOFError or KeyError:
         _alert_message("Error in updating staff", 1)
@@ -414,6 +511,7 @@ def update_staff(user_id):
 
 @app.route('/deleteStaff/<int:user_id>', methods=['POST'])
 def delete_staff(user_id):
+
     with shelve.open('user.db', 'w') as user_db:
         temporary_dict = user_db['Staff']
         temporary_dict.pop(str(user_id))
@@ -424,6 +522,7 @@ def delete_staff(user_id):
 @app.route("/createProduct", methods=["GET", "POST"])
 def create_product():
     name = _session_name()
+    user_id = session["user_id"]
 
     referral_route = request.args.get("referral_route")
     if referral_route == "login":
@@ -486,8 +585,8 @@ def create_product():
         _alert_message("Error in product form", 1)
         return redirect(url_for("create_product", referral_route="create_product"))
 
-    return render_template("createProduct.html", form=prod_form,
-                           message=_get_alert_msg(), sh_msg=_get_sh_msg(), name=name)
+    return render_template("createProduct.html", form=prod_form, message=_get_alert_msg(),
+                           sh_msg=_get_sh_msg(), name=name, user_id=user_id)
 
 
 @app.route('/uploaded_file/<filename>')
@@ -498,6 +597,7 @@ def uploaded_file(filename):
 @app.route("/retrieveProduct")
 def retrieve_product():
     name = _session_name()
+    user_id = session["user_id"]
 
     try:
         referral_route = request.args.get("referral_route")
@@ -522,7 +622,7 @@ def retrieve_product():
             _alert_message("No product created yet, create one.", 1)
             return redirect(url_for("create_product", referral_route="retrieve_product"))
         return render_template('retrieveProduct.html', count=count, product_list=product_list,
-                               message=_get_alert_msg(), sh_msg=_get_sh_msg(), name=name)
+                               message=_get_alert_msg(), sh_msg=_get_sh_msg(), name=name, user_id=user_id)
 
     except EOFError or KeyError:
         _alert_message("No product created yet, create one.", 1)
@@ -532,6 +632,7 @@ def retrieve_product():
 @app.route("/updateProduct/<int:prod_id>", methods=["GET", "POST"])
 def update_product(prod_id):
     name = _session_name()
+    user_id = session["user_id"]
     try:
         update_product_form = UpdateProductForm(request.form)
         if request.method == "POST":
@@ -576,7 +677,6 @@ def update_product(prod_id):
                 _alert_message("Image updated successfully!", 1)
                 prod_dict[str(prod_id)] = product
                 user_db["Product"] = prod_dict
-                # TODO: Update product functionality
                 return redirect(url_for("retrieve_product", referral_route="update_product"))
         else:
             with shelve.open("user.db", "r") as user_db:
@@ -589,7 +689,7 @@ def update_product(prod_id):
             stub = str(product.get_filename())
             update_product_form.filename.data = stub[:-12]
         return render_template("updateProduct.html", form=update_product_form,
-                               name=name, prod_id=prod_id)
+                               name=name, prod_id=prod_id, user_id=user_id)
 
     except EOFError or KeyError:
         _alert_message("Error in updating product", 1)
@@ -598,17 +698,110 @@ def update_product(prod_id):
 
 @app.route("/deleteProduct/<int:prod_id>", methods=["POST"])
 def delete_product(prod_id):
-    pass
+    try:
+        with shelve.open('user.db', 'w') as user_db:
+            temp_dict = user_db["Product"]
+            temp_prod = temp_dict[str(prod_id)]
+            filename = temp_prod.get_filename()
+            app.config["UPLOADED_IMAGES"].remove(filename)
+            os.remove(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+            print(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+            temp_dict.pop(str(prod_id))
+            user_db["Product"] = temp_dict
 
+            _alert_message("Product successfully deleted!")
+        return redirect(url_for('retrieve_product', referral_route="delete_product"))
+    except Exception as exception:
+        print(exception)
+        _alert_message("Error in deleting product", 1)
+        return redirect(url_for("retrieve_product", referral_route="delete_product"))
 
-# TODO: Update and delete product, make images work
 # TODO: Changing a profile picture etc
-# TODO: Searching of stuff at all? ???
-# TODO: Create goofy "server is down maintenance notice page"
-# TODO: Report generation smh
-# TODO: Fix up the UI
+# TODO: Searching of product
+# TODO: Make report generation not look goofy and generate pdf form, can select various html pages
 # TODO: Input excel file, render it and then ask if they want to store the details in the database.
 # TODO: Update Customer
+
+
+@app.route("/generatePDF")
+def generate_pdf():
+    try:
+        if request.method == "GET":
+            name = _session_name()
+            requests = session["details"][2]
+            earnings = session["details"][3]
+            monthly_earnings = f"{float(earnings)/12:.2f}"
+            progress = session["details"][5]
+            referral_chart = [0, 0, 0]
+            with shelve.open("user.db", "r") as user_db:
+                for customer in user_db["Customer"].values():
+                    if customer.get_referral() == "Direct":
+                        referral_chart[0] += 1
+                    elif customer.get_referral() == "Social":
+                        referral_chart[1] += 1
+                    else:
+                        referral_chart[2] += 1
+
+            # TODO: Connect Code to render area chart to backend (financial earnings etc), do the bar chart code
+            #
+            pie_chart_data = referral_chart
+            area_chart_data = [0, 69420, 150000, 79825, 103159, 209475, 256081, 291080, 315000, 360000, 425000, 540000]
+
+            rendered_html = render_template("index.html", pie_chart_data=pie_chart_data,
+                                            area_chart_data=area_chart_data, name=name, progress=progress,
+                                            requests=requests, earnings=earnings, monthly_earnings=monthly_earnings)
+            # TODO: Custom pdf and python pre-rendering of charts
+            document = weasyprint.HTML(string=rendered_html)
+            # HTML(string=HTML_CONTENT, base_url='.').write_pdf(stylesheets=["styles.css"])  # Path to CSS file
+            pdf = document.write_pdf()
+            response = Response(pdf, mimetype='application/pdf')
+            response.headers['Content-Disposition'] = 'attachment; filename=report.pdf'
+            _alert_message("Successfully downloaded report!", 1)
+            return response
+    except ValueError or IOError or KeyError:
+        _alert_message("Error in downloading PDF", 1)
+        return redirect(url_for("home", referral_route="generate_pdf"))
+
+
+@app.route("/uploadData", methods=["GET", "POST"])
+def upload_data():
+    _alert_message()
+    name = _session_name()
+
+    # TODO: Referral route code for upload data
+    try:
+        data_form = UploadDataFile(request.form)
+        if request.method == "POST":
+            data_file = request.files["data_file"]
+            filename = data_form.filename.data
+            database = data_form.database.data
+            old_filename = data_file.filename
+
+            data_comp = False
+            for data in app.config['UPLOADED_DATAFILES']:
+                if data == filename:
+                    data_comp = True
+                else:
+                    continue
+
+            if not (data_file and filename and database) and data_comp is True:
+                allowed_chars = string.ascii_letters + string.digits
+                filename = "".join(random.choice(allowed_chars.lower()) for i in range(20))
+
+            new_filename = _parse_files_db(database, data_file, filename, old_filename)
+
+            app.config['UPLOADED_DATAFILES'].append(new_filename)
+            if database == "Staff":
+                return redirect(url_for("retrieve_staff", referral_route="upload_data"))
+            else:
+                return redirect(url_for("retrieve_customer", referral_route="upload_data"))
+
+    except EOFError or KeyError or IOError:
+        _alert_message("Error in uploading data", 1)
+        return redirect(url_for("upload_data", referral_route="upload_data"))
+
+    return render_template("uploadFile.html", form=data_form,
+                           message=_get_alert_msg(), sh_msg=_get_sh_msg(), name=name)
 
 
 if __name__ == '__main__':
@@ -617,9 +810,10 @@ if __name__ == '__main__':
     app.config["Show No"] = 0
     app.config["No"] = ""
     app.config["Route"] = ""
-    app.config["Topbar"] = 0
-    app.config['UPLOAD_FOLDER'] = 'static/uploads'  # Set upload folder
+    app.config['UPLOAD_FOLDER'] = './static/uploads'  # Set upload folder
     app.config["UPLOADED_IMAGES"] = []
+    app.config["DATAFILE_FOLDER"] = './static/datafiles'
+    app.config["UPLOADED_DATAFILES"] = []
 
     try:
         with shelve.open('user.db', 'c') as user_database:

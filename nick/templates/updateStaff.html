@@ -31,6 +31,10 @@
     {{ name }}
 {% endblock %}
 
+{% block settings %}
+    updateStaff/{{user_id}}
+{% endblock %}
+
 {% block content %}
 {% from "includes/_formHelper.html" import render_field %}
   <h1 class="h3 mb-0 text-gray-800">Update Staff</h1>

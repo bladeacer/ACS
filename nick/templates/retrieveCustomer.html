@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block title %}
-    Amsyar's Card Shop Admin - Retrieve Staff
+    Amsyar's Card Shop Admin - Retrieve Customer
 {% endblock %}
 
 {% block styles %}
@@ -31,6 +31,11 @@
     {{ name }}
 {% endblock %}
 
+
+{% block settings %}
+    updateStaff/{{user_id}}
+{% endblock %}
+
 {% block content %}
 {% from "includes/_formHelper.html" import render_field %}
 
@@ -42,63 +47,57 @@
   </button>
 </div>
 {% endif %}
-  <h1 class="h3 mb-0 text-gray-800">Retrieve Product</h1>
+  <h1 class="h3 mb-0 text-gray-800">Retrieve Customer</h1>
 <div>
     <div>
-        Total Products: {{ count }}
+        Total Customer Users: {{ count }}
     </div>
     <div id="search_form">
-        <form method="POST" action="{{url_for('retrieve_product')}}">
-        <label for="prod_search">Search Product</label>
-        <input type="number" id="prod_search" name="prod_search" placeholder="Product ID" size="25" minlength="1" maxlength="150" required>
+        <form method="POST" action="{{url_for('search_customer')}}">
+        <label for="customer_search">Search Customer</label>
+        <input id="customer_search" name="user_search" placeholder="Search" size="25" minlength="1" maxlength="150" required>
         <input type="submit" value="Submit">
         </form>
     </div>
+
 </div>
-<div>
     <table class="table table-striped">
         <thead>
             <tr>
-                <th>Product ID</th>
-                <th>Image</th>
-                <th>Product Name</th>
-                <th>Unit Price</th>
-                <th>Description</th>
-                <th>Stock Count</th>
-                <th>On Sale</th>
+                <th>User ID</th>
+                <th>Customer ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Gender</th>
+                <th>Phone Number</th>
+                <th>Mailing Address</th>
+                <th>Referral</th>
             </tr>
         </thead>
         <tbody>
-        {% for product in product_list %}
+        {% for customer in customer_list %}
             <tr>
-                <td>{{product.get_prod_id()}}</td>
-                <td class="card">
-                    {% set path = url_for('uploaded_file', filename=product.get_filename()) %}
-                    <img src="{{ path }}" alt="Product Image" class="card-body img-fluid">
-                </td>
-                <td>{{product.get_name()}}</td>
-                <td>${{product.get_price()}}</td>
-                <td>{{product.get_description()}}</td>
-                <td>{{product.get_count()}}</td>
-                <td> {% if product.get_is_stock() %}
-                        Yes
-                    {% else: %}
-                        No
-                    {% endif %}
-                </td>
-
-                <td><a href="/updateProduct/{{product.get_prod_id()}}" class="btn btn-warning">Update</a> <br></td>
+                <td> {{customer.get_user_id()}} </td>
+                <td>{{ customer.get_customer_id() }}</td>
+                <td>{{ customer.get_name() }}</td>
+                <td>{{ customer.get_email() }}</td>
+                <td>{{ customer.get_gender() }}</td>
+                <td>{{ customer.get_phone_number() }}</td>
+                <td>{{ customer.get_mailing_address() }}</td>
+                <td> {{ customer.get_referral()}}</td>
                 <td>
-                    <form action="url_for('delete_product', user_id={{product.get_prod_id()}}" method="POST">
+                    <form action="{{url_for('delete_customer', user_id=customer.get_user_id())}}" method="POST">
                         <input type="submit" value="Delete" class="btn btn-danger"
-                               onclick="return confirm('Are you sure you want to delete product {{product.get_name()}} (Product ID:{{product.get_prod_id()}})?');">
+                               onclick="return confirm('Are you sure you want to delete {{customer.get_name()}} (User ID:{{customer.get_user_id()}})?');">
                     </form>
                 </td>
+                <td></td>
             </tr>
         {% endfor %}
         </tbody>
     </table>
-</div>
+
+
 {% endblock %}
 
 {% block scripts %}
