@@ -109,6 +109,7 @@ def _parse_files_db(database_key, data_file, data_name, old_filename):
     with (shelve.open('user.db', 'c') as user_db):
         rows = df.shape[0]
         cols = df.shape[1]
+        data_items = []
         if database_key == "Staff" and cols == 12:
             df.columns = ["Name", "Email", "Password", "Start Date", "Position", "Total Earnings", "Gender",
                           "Phone Number", "Mailing Address", "Progress", "Requests", "Self Description"]
@@ -131,10 +132,9 @@ def _parse_files_db(database_key, data_file, data_name, old_filename):
 
             df = df.iloc[1:]
             rows = df.shape[0]
-            data_items = []
             for a in range(rows):
                 mini_li = df.iloc[a].tolist()
-                data = Staff(mini_li[0], mini_li[1], mini_li[2], mini_li[2], mini_li[4],
+                data = Staff(mini_li[0], str(round(float(mini_li[1]), 0)), mini_li[2], mini_li[2], mini_li[4],
                              mini_li[5], mini_li[6], mini_li[7], mini_li[8], mini_li[9], mini_li[10],
                              mini_li[11])
                 data_items.append(data)
@@ -161,11 +161,11 @@ def _parse_files_db(database_key, data_file, data_name, old_filename):
 
             df = df.iloc[1:]
             rows = df.shape[0]
-            data_items = []
 
             for a in range(rows):
                 stub = df.iloc[a].tolist()
-                data = Customer(stub[0], stub[1], stub[2], stub[3], stub[4], stub[5], stub[6], stub[7], stub[8])
+                data = Customer(stub[0], str(round(float(stub[1]), 0)), stub[2], stub[3], stub[4], stub[5], stub[6],
+                                stub[7], stub[8])
                 data_items.append(data)
 
         else:
@@ -173,7 +173,14 @@ def _parse_files_db(database_key, data_file, data_name, old_filename):
 
         existing_data = user_db.get(database_key, [])
         for i in range(rows):
-            existing_data[user_ids[i]] = data_items[i]
+            var = data_items[i]
+            user_id = str(int(user_ids[i])+1)
+            if database_key == "Customer":
+                var.set_customer_id(str(round(float(var.get_customer_id()), 0)))
+            else:
+                var.set_staff_id(str(round(float(var.get_staff_id()), 0)))
+            existing_data[user_id] = var
+            # Shush Python it works
         user_db[database_key] = existing_data
 
     return filename
@@ -186,8 +193,6 @@ def login():
         referral_route = request.args.get("referral_route")
         if referral_route == "login":
             _alert_message("Invalid password or username", 1)
-        elif referral_route == "session_chk":
-            _alert_message("No staff created yet oh noes")
         else:
             _alert_message()
         create_login_form = LoginForm(request.form)
@@ -214,6 +219,7 @@ def login():
 @app.route("/home")
 def home():
     # TODO: Link up product purchase details to charts etc.
+    # TODO: CODE customer feedback linked up to generated pdf
     referral_route = request.args.get("referral_route")
     url_fun = request.url
     if referral_route == "login" or "retrieve" in url_fun or "create" in url_fun:
@@ -237,8 +243,6 @@ def home():
             except AttributeError:
                 return redirect(url_for("create_customer", referral_route="home"))
 
-    # TODO: Connect Code to render area chart to backend (financial earnings etc), do the bar chart code
-    #
     pie_chart_data = referral_chart
     area_chart_data = [0, 69420, 150000, 79825, 103159, 209475, 256081, 291080, 315000, 360000, 425000, 540000]
     user_id = session["user_id"]
@@ -275,6 +279,8 @@ def create_customer():
     user_id = session["user_id"]
     referral_route = request.args.get("referral_route")
     create_customer_form = CreateCustomerForm(request.form)
+
+    # TODO: Compare emails for customer
     if request.method == "POST":
         user_db = shelve.open('user.db', 'c')
         new_user_id = user_db["Last ID Used"][0] + 1
@@ -324,21 +330,21 @@ def retrieve_customer():
         return redirect(url_for("create_customer", referral_route="retrieve_customer"))
 
 
-@app.route('/searchCustomer', methods=['POST'])
-def search_customer():
-    name = _session_name()
-    user_id = session["user_id"]
-
-    user_search_item = request.get_data(as_text=True)[12:]
-    with shelve.open("user.db", "c") as user_db:
-        customer_list = user_db["Customer"].values()
-        if user_search_item in customer_list:
-            # customer = customer_list[], probably retrieve and index everything e
-            # TODO: Make search index retrieve customer and staff
-            pass
-        else:
-            return render_template('searchCustomer.html', customer=None, name=name)
-    return render_template('searchCustomer.html', name=name, user_id=user_id)
+# @app.route('/searchCustomer', methods=['POST'])
+# def search_customer():
+#     name = _session_name()
+#     user_id = session["user_id"]
+#
+#     user_search_item = request.get_data(as_text=True)[12:]
+#     with shelve.open("user.db", "c") as user_db:
+#         customer_list = user_db["Customer"].values()
+#         if user_search_item in customer_list:
+#             # customer = customer_list[], probably retrieve and index everything e
+#             # TODO: Make search index retrieve customer and staff
+#             pass
+#         else:
+#             return render_template('searchCustomer.html', customer=None, name=name)
+#     return render_template('searchCustomer.html', name=name, user_id=user_id)
 
 
 @app.route('/deleteCustomer/<int:user_id>', methods=['POST'])
@@ -379,32 +385,41 @@ def create_staff():
     else:
         _alert_message()
     if request.method == 'POST':
-        # TODO: Retrieve and compare emails
+        with shelve.open("user.db", "r") as user_db:
+            email_list = []
+            for staff in user_db["Staff"].values():
+                email_list += [staff.get_email()]
+
         user_db = shelve.open('user.db', 'c')
         staff_dict = user_db["Staff"]
         new_user_id = user_db["Last ID Used"][0] + 1
         new_staff_id = user_db["Last ID Used"][2] + 1
-        staff = Staff(
-            new_user_id,
-            new_staff_id,
-            create_staff_form.name.data,
-            create_staff_form.email.data,
-            create_staff_form.password.data,
-            create_staff_form.start_date.data,
-            create_staff_form.position.data,
-            create_staff_form.total_earnings.data,
-            create_staff_form.gender.data,
-            create_staff_form.phone_number.data,
-            create_staff_form.mailing_address.data,
-            create_staff_form.self_description.data,
-            create_staff_form.progress.data,
-            create_staff_form.requests.data
-        )
-        staff_dict[staff.get_user_id()] = staff
-        user_db["Staff"] = staff_dict
-        user_db["Last ID Used"] = [new_user_id, user_db["Last ID Used"][1], new_staff_id]
-        user_db.close()
-        return redirect(url_for('retrieve_staff', referral_route="create_staff"))
+
+        if create_staff_form.email.data not in email_list:
+            staff = Staff(
+                new_user_id,
+                new_staff_id,
+                create_staff_form.name.data,
+                create_staff_form.email.data,
+                create_staff_form.password.data,
+                create_staff_form.start_date.data,
+                create_staff_form.position.data,
+                create_staff_form.total_earnings.data,
+                create_staff_form.gender.data,
+                create_staff_form.phone_number.data,
+                create_staff_form.mailing_address.data,
+                create_staff_form.self_description.data,
+                create_staff_form.progress.data,
+                create_staff_form.requests.data
+            )
+            staff_dict[staff.get_user_id()] = staff
+            user_db["Staff"] = staff_dict
+            user_db["Last ID Used"] = [new_user_id, user_db["Last ID Used"][1], new_staff_id]
+            user_db.close()
+            return redirect(url_for('retrieve_staff', referral_route="create_staff"))
+        else:
+            _alert_message("Credentials must be unique")
+            return redirect(url_for("create_staff"))
     elif referral_route == "create_staff":
         _alert_message("Error in validating staff form", 1)
         return redirect(url_for("create_staff"))
@@ -448,22 +463,22 @@ def retrieve_staff():
         return redirect(url_for("create_staff", referral_route="retrieve_staff"))
 
 
-@app.route('/searchStaff', methods=['POST'])
-def search_staff():
-    name = _session_name()
-    user_id = session["user_id"]
-
-    user_search_item = int(request.get_data(as_text=True)[12:])
-    with shelve.open("user.db", "r") as user_db:
-        staff_dict = user_db['Staff']
-        if user_search_item in staff_dict:
-            staff = staff_dict[user_search_item]
-            staff.set_total_earnings(float(staff.get_total_earnings()))
-            start_date = staff.get_start_date()
-            staff.set_start_date(f"{start_date.day}/{start_date.month}/{start_date.year}")
-        else:
-            staff = None
-    return render_template('searchStaff.html', staff=staff, name=name, user_id=user_id)
+# @app.route('/searchStaff', methods=['POST'])
+# def search_staff():
+#     name = _session_name()
+#     user_id = session["user_id"]
+#
+#     user_search_item = int(request.get_data(as_text=True)[12:])
+#     with shelve.open("user.db", "r") as user_db:
+#         staff_dict = user_db['Staff']
+#         if user_search_item in staff_dict:
+#             staff = staff_dict[user_search_item]
+#             staff.set_total_earnings(float(staff.get_total_earnings()))
+#             start_date = staff.get_start_date()
+#             staff.set_start_date(f"{start_date.day}/{start_date.month}/{start_date.year}")
+#         else:
+#             staff = None
+#     return render_template('searchStaff.html', staff=staff, name=name, user_id=user_id)
 
 
 @app.route('/updateStaff/<int:user_id>', methods=['GET', 'POST'])
@@ -716,11 +731,8 @@ def delete_product(prod_id):
         _alert_message("Error in deleting product", 1)
         return redirect(url_for("retrieve_product", referral_route="delete_product"))
 
-# TODO: Changing a profile picture etc
-# TODO: Searching of product
-# TODO: Make report generation not look goofy and generate pdf form, can select various html pages
-# TODO: Input excel file, render it and then ask if they want to store the details in the database.
-# TODO: Update Customer
+
+# TODO: Download retrieve page aah as Excel or csv file.
 
 
 @app.route("/generatePDF")
@@ -728,10 +740,6 @@ def generate_pdf():
     try:
         if request.method == "GET":
             name = _session_name()
-            requests = session["details"][2]
-            earnings = session["details"][3]
-            monthly_earnings = f"{float(earnings)/12:.2f}"
-            progress = session["details"][5]
             referral_chart = [0, 0, 0]
             with shelve.open("user.db", "r") as user_db:
                 for customer in user_db["Customer"].values():
@@ -741,18 +749,97 @@ def generate_pdf():
                         referral_chart[1] += 1
                     else:
                         referral_chart[2] += 1
+            # Pie Chart Data
 
-            # TODO: Connect Code to render area chart to backend (financial earnings etc), do the bar chart code
-            #
-            pie_chart_data = referral_chart
+            # TODO: Refactor area chart code, give up on svg
+
+            # Area Chart Data
+            labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
             area_chart_data = [0, 69420, 150000, 79825, 103159, 209475, 256081, 291080, 315000, 360000, 425000, 540000]
 
-            rendered_html = render_template("index.html", pie_chart_data=pie_chart_data,
-                                            area_chart_data=area_chart_data, name=name, progress=progress,
-                                            requests=requests, earnings=earnings, monthly_earnings=monthly_earnings)
-            # TODO: Custom pdf and python pre-rendering of charts
-            document = weasyprint.HTML(string=rendered_html)
-            # HTML(string=HTML_CONTENT, base_url='.').write_pdf(stylesheets=["styles.css"])  # Path to CSS file
+            parsed_html = f"""
+            <body>
+                <h1>Report for Financial Year 2023</h1>
+                <br>
+                <h3>Earnings</h3>
+                <table>
+                <tr>
+                    <td style="border: 1px solid black;">Month</td>
+                    <td style="border: 1px solid black;">Earnings</td>
+                <tr>
+                    <td style="border: 1px solid black;">{labels[0]}</td>
+                    <td style="border: 1px solid black;">${area_chart_data[0]:.2f}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black;">{labels[1]}</td>
+                    <td style="border: 1px solid black;">${area_chart_data[1]:.2f}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black;">{labels[2]}</td>
+                    <td style="border: 1px solid black;">${area_chart_data[2]:.2f}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black;">{labels[3]}</td>
+                    <td style="border: 1px solid black;">${area_chart_data[3]:.2f}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black;">{labels[4]}</td>
+                    <td style="border: 1px solid black;">${area_chart_data[4]:.2f}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black;">{labels[5]}</td>
+                    <td style="border: 1px solid black;">${area_chart_data[5]:.2f}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black;">{labels[6]}</td>
+                    <td style="border: 1px solid black;">${area_chart_data[6]:.2f}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black;">{labels[7]}</td>
+                    <td style="border: 1px solid black;">${area_chart_data[7]:.2f}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black;">{labels[8]}</td>
+                    <td style="border: 1px solid black;">${area_chart_data[8]:.2f}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black;">{labels[9]}</td>
+                    <td style="border: 1px solid black;">${area_chart_data[9]:.2f}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black;">{labels[10]}</td>
+                    <td style="border: 1px solid black;">${area_chart_data[10]:.2f}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black;">{labels[11]}</td>
+                    <td style="border: 1px solid black;">${area_chart_data[11]:.2f}</td>
+                </tr>
+                </table>
+                <br>
+                <h3>Customer Feedback</h3>
+                <p>The products are delivered on time. Need to work on value propositions to beat competitors.</p>
+                <br>
+                <h3>Revenue Sources</h3>
+                <table>
+                <tr>
+                <td style="border: 1px solid black;">Direct</td>
+                <td style="border: 1px solid black;">Social</td>
+                <td style="border: 1px solid black;">Referral</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black;">{referral_chart[0]}</td>
+                    <td style="border: 1px solid black;">{referral_chart[1]}</td>
+                    <td style="border: 1px solid black;"{referral_chart[2]}</td>
+                </tr>
+                </table>
+                <p>Based on the above, there are more customer engaging us via social events.</p>
+                <br>
+                <h5> Source </h5>
+                <p> {name} </p>
+            </body>
+            """
+            # TODO: Exporting of database as xslx or csv
+            document = weasyprint.HTML(string=parsed_html)
             pdf = document.write_pdf()
             response = Response(pdf, mimetype='application/pdf')
             response.headers['Content-Disposition'] = 'attachment; filename=report.pdf'
@@ -768,7 +855,6 @@ def upload_data():
     _alert_message()
     name = _session_name()
 
-    # TODO: Referral route code for upload data
     try:
         data_form = UploadDataFile(request.form)
         if request.method == "POST":
