@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Confirmation</title>
+</head>
+<body>
+    <h2>Thank you for your feedback!</h2>
+    <p>If there are any more questions, you could email us at acs@gmail.com</p>
+<table class="table table-striped">
+<thead>
+<tr>
+<th>Email</th>
+<th>Category</th>
+<th>Rating</th>
+<th>Feedback</th>
+    <th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+{% for feedback in feedback_list %}
+<tr>
+<td>{{ feedback.email }}</td>
+<td>{{ feedback.category }}</td>
+<td>{{ feedback.rating }}</td>
+<td>{{ feedback.feedback_content }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</body>
+</html>
