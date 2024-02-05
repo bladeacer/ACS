@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Data</title>
+    <!-- Add any necessary styling here -->
+</head>
+<body>
+    <h1>Payment Data</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Email</th>
+                <th>Amount</th>
+                <th>Payment Status</th>
+                <!-- Add more columns based on your payment data structure -->
+            </tr>
+        </thead>
+        <tbody>
+            {% for payment_entry in payment_data %}
+                <tr>
+                    <td>{{ payment_entry.id }}</td>
+                    <td>{{ payment_entry.email }}</td>
+                    <td>{{ "{:.2f}".format(payment_entry.amount_total / 100) }}</td>
+                    <td>{{ payment_entry.payment_status }}</td>
+                    <!-- Add more cells based on your payment data structure -->
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
+
+
