@@ -1,18 +1,26 @@
 import shelve
 
-import bcrypt
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session
 
 from Forms import *
 from user_validators import *
 from UserClasses import Customer, Staff
 
 app = Flask(__name__)
+app.secret_key = '2b$12$lg1PlCwZACW0Hy5RumzuZe'
 
 
 @app.route('/')
 def home():
     return render_template('user_database_home.html')
+
+
+# customer routes
+
+
+@app.route('/customerHome')
+def customer_home():
+    return render_template('customerHome.html')
 
 
 @app.route('/customerLogin', methods=['GET', 'POST'])
@@ -23,24 +31,106 @@ def customer_login():
     with shelve.open('user.db', 'c') as user_db:
         login_error = "Incorrect email or password"
         customer_dict = user_db['Customer']
-        customer_email = customer_login_form.email.data
-        # returns user_id if customer exists
-        customer = check_existing_email(customer_email, customer_dict)
+        # returns customer object if email exists in database
+        customer = check_existing_email(customer_login_form.email.data, customer_dict)
         if not customer:
             return render_template('customerLogin.html', form=CustomerForm(), error=login_error)
-        stored_password = customer.get_password()
-        customer_password = bytes(customer_login_form.password.data, 'utf-8')
-        if bcrypt.hashpw(customer_password, stored_password.salt) != stored_password.hash:
+        if not matching_passwords(customer_login_form.password.data, customer.get_password()):
             return render_template('customerLogin.html', form=CustomerForm(), error=login_error)
-        return render_template('customerHome.html', user=customer)
+        session['User ID'] = customer.get_user_id()
+        return redirect(url_for("customer_home"))
 
 
-@app.route('/customerRegister')
+@app.route('/customerRegister', methods=['GET', 'POST'])
 def customer_register():
-    customer_login_form = CustomerForm(request.form)
-    if request.method == "POST" and customer_login_form.validate():
-        pass
-    return render_template('customerRegister.html', form=customer_login_form)
+    # fix this
+    customer_register_form = CustomerForm(request.form)
+    if request.method == "GET" or (request.method == "POST" and customer_register_form.validate()):
+        return render_template('customerRegister.html', form=CustomerForm())
+    with shelve.open('user.db', 'c') as user_db:
+        customer_dict = user_db["Customer"]
+        if customer_dict:
+            new_user_id = list(customer_dict.keys())[-1] + 1
+            new_customer_id = list(customer_dict.values())[-1].get_customer_id() + 1
+        else:
+            new_user_id = 1
+            new_customer_id = 1
+        customer_email = customer_register_form.email.data
+        email_error = ''
+        if check_existing_email(customer_email, customer_dict):
+            email_error = "Email already exists"
+        customer_password = customer_register_form.password.data
+        password_errors = check_password_errors(customer_password)
+        if password_errors and email_error:
+            return render_template('customerRegister.html', form=customer_register_form, password_errors=password_errors, email_error="Email already exists")
+        elif password_errors:
+            return render_template('customerRegister.html', form=customer_register_form, password_errors=password_errors, email_error='')
+        customer = Customer(
+            new_user_id,
+            new_customer_id,
+            customer_register_form.name.data,
+            customer_email,
+            HashedPassword(customer_password)
+        )
+        customer_dict[new_user_id] = customer
+        user_db["Customer"] = customer_dict
+    return redirect(url_for('customer_login'))
+
+
+@app.route('/customerProfile', methods=['GET', 'POST'])
+def customer_profile():
+    customer_profile_form = UpdateCustomerForm(request.form)
+    session_user_id = session['User ID']
+    if request.method == 'POST' and customer_profile_form.validate():
+        with shelve.open('user.db', 'c') as user_db:
+            customer_dict = user_db['Customer']
+            customer = customer_dict.get(session_user_id)
+            customer.set_name(customer_profile_form.name.data)
+            customer.set_email(customer_profile_form.email.data)
+            customer.set_gender(customer_profile_form.gender.data)
+            customer.set_phone_number(customer_profile_form.phone_number.data)
+            customer.set_mailing_address(customer_profile_form.mailing_address.data)
+            customer_dict[session_user_id] = customer
+            user_db['Customer'] = customer_dict
+        return render_template('customerProfile.html', form=customer_profile_form, saved_message='Saved Changes')
+    else:
+        with shelve.open('user.db', 'c') as user_db:
+            customer_dict = user_db['Customer']
+            customer = customer_dict[session_user_id]
+            customer_profile_form.name.data = customer.get_name()
+            customer_profile_form.email.data = customer.get_email()
+            customer_profile_form.gender.data = customer.get_gender()
+            customer_profile_form.phone_number.data = customer.get_phone_number()
+            customer_profile_form.mailing_address.data = customer.get_mailing_address()
+        return render_template('customerProfile.html', form=customer_profile_form)
+
+
+@app.route('/customerChangePassword', methods=['GET', 'POST'])
+def customer_change_password():
+    change_password_form = CustomerChangePasswordForm(request.form)
+    session_user_id = session['User ID']
+    if request.method == 'POST' and change_password_form.validate():
+        with shelve.open('user.db', 'c') as user_db:
+            customer_dict = user_db['Customer']
+            customer = customer_dict.get(session_user_id)
+            if not matching_passwords(change_password_form.old_password.data, customer.get_password()):
+                return render_template('customerChangePassword.html', form=change_password_form,
+                                       incorrect_password_error='Incorrect Password')
+            if matching_passwords(change_password_form.new_password.data, customer.get_password()):
+                return render_template('customerChangePassword.html', form=change_password_form,
+                                       matching_old_password_error='Cannot match old password')
+            password_errors = check_password_errors(change_password_form.new_password.data)
+            if password_errors:
+                return render_template('customerChangePassword.html', form=change_password_form,
+                                       password_errors=password_errors)
+            customer.set_password(HashedPassword(change_password_form.new_password.data))
+            customer_dict[session_user_id] = customer
+            user_db['Customer'] = customer_dict
+        return redirect(url_for('customer_profile'))
+    return render_template('customerChangePassword.html', form=change_password_form)
+
+
+# database routes
 
 
 @app.route('/inputCustomer', methods=["GET", "POST"])
@@ -226,40 +316,38 @@ def input_staff():
 def create_staff():
     create_staff_form = StaffForm(request.form)
     if request.method == 'POST':
-        user_db = shelve.open('user.db', 'c')
-        staff_dict = user_db["Staff"]
-        if staff_dict:
-            new_user_id = list(staff_dict.keys())[-1] + 1
-            new_staff_id = list(staff_dict.values())[-1].get_staff_id() + 1
-        else:
-            new_user_id = 1
-            new_staff_id = 1
-        customer_email = create_staff_form.email.data
-        if check_existing_email(customer_email, staff_dict):
-            return render_template('createCustomer.html', form=create_staff_form, email_error="Email already exists")
-        customer_password = create_staff_form.password.data
-        password_errors = check_password_errors(customer_password)
-        if password_errors:
-            return render_template('createCustomer.html', form=create_staff_form, password_errors=password_errors)
-        staff = Staff(
-            new_user_id,
-            new_staff_id,
-            create_staff_form.name.data,
-            customer_email,
-            HashedPassword(customer_password),
-            create_staff_form.start_date.data,
-            create_staff_form.position.data,
-            # removing the '$' from field input
-            float(create_staff_form.total_earnings.data[1:]),
-            create_staff_form.gender.data,
-            create_staff_form.phone_number.data,
-            create_staff_form.mailing_address.data
-        )
-        staff_dict[staff.get_user_id()] = staff
-        user_db["Staff"] = staff_dict
-        user_db["Last ID Used"] = [new_user_id, new_staff_id, user_db["Last ID Used"][2]]
-        user_db.close()
-        return redirect(url_for('retrieve_staff'))
+        with shelve.open('user.db', 'c') as user_db:
+            staff_dict = user_db["Staff"]
+            if staff_dict:
+                new_user_id = list(staff_dict.keys())[-1] + 1
+                new_staff_id = list(staff_dict.values())[-1].get_staff_id() + 1
+            else:
+                new_user_id = 1
+                new_staff_id = 1
+            staff_email = create_staff_form.email.data
+            if check_existing_email(staff_email, staff_dict):
+                return render_template('createStaff.html', form=create_staff_form, email_error="Email already exists")
+            staff_password = create_staff_form.password.data
+            password_errors = check_password_errors(staff_password)
+            if password_errors:
+                return render_template('createStaff.html', form=create_staff_form, password_errors=password_errors)
+            staff = Staff(
+                new_user_id,
+                new_staff_id,
+                create_staff_form.name.data,
+                staff_email,
+                HashedPassword(staff_password),
+                create_staff_form.start_date.data,
+                create_staff_form.position.data,
+                # removing the '$' from field input
+                float(create_staff_form.total_earnings.data[1:]),
+                create_staff_form.gender.data,
+                create_staff_form.phone_number.data,
+                create_staff_form.mailing_address.data
+            )
+            staff_dict[staff.get_user_id()] = staff
+            user_db["Staff"] = staff_dict
+            return redirect(url_for('retrieve_staff'))
     return render_template('createStaff.html', form=create_staff_form)
 
 
@@ -296,14 +384,14 @@ def search_staff():
 
 @app.route('/updateStaff/<int:user_id>', methods=['GET', 'POST'])
 def update_staff(user_id):
-    update_staff_form = StaffForm(request.form)
+    update_staff_form = UpdateStaffForm(request.form)
+    print(update_staff_form.data)
     if request.method == 'POST' and update_staff_form.validate():
         with shelve.open('user.db', 'c') as user_db:
             staff_dict = user_db['Staff']
             staff = staff_dict.get(user_id)
             staff.set_name(update_staff_form.name.data)
             staff.set_email(update_staff_form.email.data)
-            staff.set_password(update_staff_form.password.data)
             staff.set_start_date(update_staff_form.start_date.data)
             staff.set_position(update_staff_form.position.data)
             staff.set_total_earnings(float(update_staff_form.total_earnings.data[1:]))
@@ -319,14 +407,12 @@ def update_staff(user_id):
         staff = staff_dict[user_id]
         update_staff_form.name.data = staff.get_name()
         update_staff_form.email.data = staff.get_email()
-        update_staff_form.password.data = staff.get_password()
         update_staff_form.start_date.data = staff.get_start_date()
         update_staff_form.position.data = staff.get_position()
         update_staff_form.total_earnings.data = f"${staff.get_total_earnings()}"
         update_staff_form.gender.data = staff.get_gender()
         update_staff_form.phone_number.data = staff.get_phone_number()
         update_staff_form.mailing_address.data = staff.get_mailing_address()
-        print(update_staff_form.data)
         return render_template('updateStaff.html', form=update_staff_form)
 
 

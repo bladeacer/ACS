@@ -4,6 +4,10 @@
 {% block content %}
 {% from "includes/_acs_formHelper.html" import render_field %}
 <style>
+    .error {
+        color: red'
+    }
+
     .error ul {
         list-style-type: none;
         margin: 0;
@@ -26,10 +30,10 @@
     </div>
     {% if error_list %}
     <div class="error">
-        <span>Errors encountered while inputting {{ user }}:</span>
+        <span style="color:red">Errors encountered while inputting {{ user }}:</span>
         <ul>
             {% for error_line, errors in error_list %}
-                <li>Line {{ error_line }}: {{ errors }}</li>
+                <li style="color: red">Line {{ error_line }}: {{ errors }}</li>
             {% endfor %}
         </ul>
     </div>

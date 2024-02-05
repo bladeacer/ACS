@@ -1,7 +1,17 @@
 from datetime import *
+
+import bcrypt
+
 from Password import HashedPassword
 staff_positions = ['CEO', 'COO', 'Front-end Developer', 'Inventory Manager', 'Intern', ]
 genders = ["M", "F", "O"]
+
+
+def matching_passwords(new_password, old_password):
+    password = bytes(new_password, "utf-8")
+    if bcrypt.hashpw(password, old_password.salt) == old_password.hash:
+        return True
+    return False
 
 
 def check_staff_errors(staff, staff_dict):
@@ -103,10 +113,10 @@ def convert_multiline_string_to_list(multiline_string):
     current_line = ""
     final_list = []
     for character in multiline_string:
-        if character == "\n":
+        if character == "\r":
             final_list.append(current_line)
             current_line = ""
-        else:
+        elif character != "\n":
             current_line += character
     else:
         final_list.append(current_line)

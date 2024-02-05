@@ -1,4 +1,4 @@
-{% extends "user_login_base.html" %}
+{% extends "customer_login_base.html" %}
 {% block title %}User database - Home{% endblock %}
 
 {% block content %}
@@ -15,7 +15,7 @@
     </div>
     <div class="error">{{ error }}</div>
     <input type="checkbox" onclick="showPassword()">Show Password<br>
-    <a href="/customerRegister">Register</a>
+    Not a member? <a href="/customerRegister">Sign Up</a><br>
     <a href="/">Back</a><br>
     <input type="submit" value="Submit" class="btn btn-primary"/>
 </form>
