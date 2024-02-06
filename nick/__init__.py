@@ -1213,8 +1213,6 @@ if __name__ == '__main__':
                 user_database["Product Pointer"] = 0  # used to create unique product ids
                 user_database["2023 Earnings"] = [0, 69420, 150000, 79825, 103159, 209475, 256081, 291080, 315000,
                                                   360000, 425000, 540000]
-            user_database["Staff"] = {}
-            user_database["Last ID Used"][2] = 0
     except KeyError or IOError or UnboundLocalError or EOFError as database_error:
         print("Error encountered opening user.db:", database_error)
     app.run(debug=True)
