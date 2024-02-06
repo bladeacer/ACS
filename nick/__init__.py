@@ -136,8 +136,10 @@ def _parse_files_db(database_key, data_file, data_name, old_filename):
             rows = df.shape[0]
             for a in range(rows):
                 mini_li = df.iloc[a].tolist()
-                data = Staff(mini_li[0], str(round(float(mini_li[1]), 0)), mini_li[2], mini_li[2], mini_li[4],
-                             mini_li[5], mini_li[6], mini_li[7], mini_li[8], mini_li[9], mini_li[10],
+                data = Staff(mini_li[0], str(round(float(mini_li[1]), 0)), mini_li[2],
+                             mini_li[3], mini_li[4],
+                             datetime(int(mini_li[5][1:5]), int(mini_li[5][6:8]), int(mini_li[5][-2:])), mini_li[6],
+                             mini_li[7], mini_li[8], mini_li[9], mini_li[10],
                              mini_li[11])
                 data_items.append(data)
         elif database_key == "Customer" and cols == 7:
@@ -166,7 +168,8 @@ def _parse_files_db(database_key, data_file, data_name, old_filename):
 
             for a in range(rows):
                 stub = df.iloc[a].tolist()
-                data = Customer(stub[0], str(round(float(stub[1]), 0)), stub[2], stub[3], stub[4], stub[5], stub[6],
+                data = Customer(stub[0], str(round(float(stub[1]), 0)), stub[2], stub[3],
+                                HashedPassword(stub[4]), stub[5], stub[6],
                                 stub[7], stub[8])
                 data_items.append(data)
 
@@ -695,6 +698,7 @@ def retrieve_staff():
             for staff in user_db["Staff"].values():
                 staff.set_total_earnings(float(staff.get_total_earnings()))
                 start_date = staff.get_start_date()
+                print(start_date)
                 staff.set_start_date(f"{start_date.day}/{start_date.month}/{start_date.year}")
                 staff_list.append(staff)
                 count += 1
@@ -1209,6 +1213,8 @@ if __name__ == '__main__':
                 user_database["Product Pointer"] = 0  # used to create unique product ids
                 user_database["2023 Earnings"] = [0, 69420, 150000, 79825, 103159, 209475, 256081, 291080, 315000,
                                                   360000, 425000, 540000]
+            user_database["Staff"] = {}
+            user_database["Last ID Used"][2] = 0
     except KeyError or IOError or UnboundLocalError or EOFError as database_error:
         print("Error encountered opening user.db:", database_error)
     app.run(debug=True)
