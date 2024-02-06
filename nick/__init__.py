@@ -180,7 +180,6 @@ def _parse_files_db(database_key, data_file, data_name, old_filename):
             else:
                 var.set_staff_id(str(round(float(var.get_staff_id()), 0)))
             existing_data[user_id] = var
-            # Shush Python it works
         user_db[database_key] = existing_data
 
     return filename
@@ -242,9 +241,10 @@ def home():
                     referral_chart[2] += 1
             except AttributeError:
                 return redirect(url_for("create_customer", referral_route="home"))
+        stub = user_db["2023 Earnings"]
 
     pie_chart_data = referral_chart
-    area_chart_data = [0, 69420, 150000, 79825, 103159, 209475, 256081, 291080, 315000, 360000, 425000, 540000]
+    area_chart_data = stub
     user_id = session["user_id"]
 
     return render_template("index.html", pie_chart_data=pie_chart_data, area_chart_data=area_chart_data,
@@ -330,21 +330,21 @@ def retrieve_customer():
         return redirect(url_for("create_customer", referral_route="retrieve_customer"))
 
 
-# @app.route('/searchCustomer', methods=['POST'])
-# def search_customer():
-#     name = _session_name()
-#     user_id = session["user_id"]
-#
-#     user_search_item = request.get_data(as_text=True)[12:]
-#     with shelve.open("user.db", "c") as user_db:
-#         customer_list = user_db["Customer"].values()
-#         if user_search_item in customer_list:
-#             # customer = customer_list[], probably retrieve and index everything e
-#             # TODO: Make search index retrieve customer and staff
-#             pass
-#         else:
-#             return render_template('searchCustomer.html', customer=None, name=name)
-#     return render_template('searchCustomer.html', name=name, user_id=user_id)
+@app.route('/searchCustomer', methods=['POST'])
+def search_customer():
+    name = _session_name()
+    user_id = session["user_id"]
+
+    user_search_item = request.get_data(as_text=True)[12:]
+    with shelve.open("user.db", "c") as user_db:
+        customer_list = user_db["Customer"].values()
+        if user_search_item in customer_list:
+            # customer = customer_list[], probably retrieve and index everything e
+            # TODO: Make search index retrieve customer and staff
+            pass
+        else:
+            return render_template('searchCustomer.html', customer=None, name=name)
+    return render_template('searchCustomer.html', name=name, user_id=user_id)
 
 
 @app.route('/deleteCustomer/<int:user_id>', methods=['POST'])
@@ -749,13 +749,14 @@ def generate_pdf():
                         referral_chart[1] += 1
                     else:
                         referral_chart[2] += 1
+                stub = user_db["2023 Earnings"]
             # Pie Chart Data
 
             # TODO: Refactor area chart code, give up on svg
 
             # Area Chart Data
             labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-            area_chart_data = [0, 69420, 150000, 79825, 103159, 209475, 256081, 291080, 315000, 360000, 425000, 540000]
+            area_chart_data = stub
 
             parsed_html = f"""
             <body>
@@ -890,6 +891,24 @@ def upload_data():
                            message=_get_alert_msg(), sh_msg=_get_sh_msg(), name=name)
 
 
+@app.route("/table")
+def table():
+    name = _session_name()
+    try:
+        month_list = ["January", "February", "March", "April", "May", "June", "July", "August", "September",
+                      "October", "November", "December"]
+        with shelve.open("user.db", "r") as user_db:
+            earnings_list = []
+            for stub in user_db["2023 Earnings"]:
+                earnings_list.append(stub)
+        earnings_list = zip(month_list, earnings_list)
+        return render_template("tables.html", earnings_list=earnings_list, name=name,
+                               message=_get_alert_msg(), sh_msg=_get_sh_msg())
+
+    except KeyError or IOError or EOFError:
+        return redirect(url_for("/table"))
+
+
 if __name__ == '__main__':
     app.jinja_env.autoescape = True
     app.secret_key = "hj^&!Hh12h3828hc7ds8f9asd82nc"
@@ -909,6 +928,9 @@ if __name__ == '__main__':
                 user_database["Product"] = {}
                 user_database["Last ID Used"] = [0, 0, 0]  # [Users, Customers, Staff]
                 user_database["Product Pointer"] = 0  # used to create unique product ids
+                user_database["2023 Earnings"] = [0, 69420, 150000, 79825, 103159, 209475, 256081, 291080, 315000,
+                                                  360000, 425000, 540000]
+
     except KeyError or IOError or UnboundLocalError or EOFError as database_error:
         print("Error encountered opening user.db:", database_error)
     app.run(debug=True)
