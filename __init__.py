@@ -1,18 +1,10 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, url_for, redirect, jsonify
 import shelve
 import stripe
-
+from Forms import *
+from Feedback import *
 
 app = Flask(__name__)
-
-stripe.api_key = "sk_test_51OV8RyGhcaAHTPePp4osOLsSuB42K5ubwCf5DFCPj6DIhz8CUDa8Jo93JWeOFw14Fg1njkLQU3WQkusO4KsfLt9X002JqriVHj"
-YOUR_DOMAIN = "http://localhost:5000"
-
-payment_data = shelve.open("payment_data")
-
-
-def get_payment_data(checkout_session_id):
-    return payment_data.get(checkout_session_id)
 
 
 @app.route('/')
@@ -23,10 +15,11 @@ def home():
 @app.route('/feedback', methods=['GET', 'POST'])
 def feedback():
     feedback_form = FeedbackForm(request.form)
-    if request.method == 'POST' and feedback_form.validate():
+    if request.method == 'POST':
         email = feedback_form.email.data
         category = feedback_form.category.data
         rating = feedback_form.rating.data
+        print(feedback_form.feedback_content.data)
         feedback_content = feedback_form.feedback_content.data
 
         with shelve.open('feedback_data') as shelf:
@@ -34,9 +27,9 @@ def feedback():
             shelf[feedback_id] = Feedback(email, category, rating, feedback_content)
             feedback_list = list(shelf.values())
 
-        return render_template('feedback_confirmation.html', feedback_list=feedback_list)
+        return render_template('feedback_success.html', feedback_list=feedback_list)
 
-    return render_template('feedback.html', form=feedback_form)
+    return render_template('feedback.html', error=None, form=feedback_form)
 
 
 @app.route('/quiz', methods=['POST', 'GET'])
@@ -46,6 +39,7 @@ def quiz():
 
 @app.route('/process', methods=['POST'])
 def process():
+    user_id = 0
     data = request.form.get('data')
     result = data
     with shelve.open('user.db') as user_db:
@@ -67,20 +61,25 @@ def retrieve_score():
 @app.route('/leaderboard', methods=['POST'])
 def leaderboard():
     latest_timestamp = request.form.get('timestamp')
-    # use latest_timestamp to filter out scores that have already been retrieved
-    # get updated leaderboard data
     with shelve.open('user.db') as user_db:
         quiz_dict = user_db.get('Quiz', {})
         sorted_quiz_dict = {k: v for k, v in sorted(quiz_dict.items(), key=lambda item: item[1], reverse=True)}
     return jsonify(sorted_quiz_dict)
 
 
-@app.route('/checkout', methods=['POST'])
+stripe.api_key = "sk_test_51OV8RyGhcaAHTPePp4osOLsSuB42K5ubwCf5DFCPj6DIhz8CUDa8Jo93JWeOFw14Fg1njkLQU3WQkusO4KsfLt9X002JqriVHj"
+
+YOUR_DOMAIN = "http://localhost:5000"
+
+payment_data = shelve.open("payment_data")
+
+
+@app.route('/checkout', methods=['POST', 'GET'])
 def checkout():
     return render_template('checkout.html')
 
 
-@app.route('/create-checkout-session', methods=['POST'])
+@app.route('/create_checkout_session', methods=['POST'])
 def create_checkout_session():
     try:
         email = request.form.get('email')
@@ -165,6 +164,10 @@ def create_checkout_session():
     return redirect(checkout_session.url, code=303)
 
 
+def get_payment_data(checkout_session_id):
+    return payment_data.get(checkout_session_id)
+
+
 @app.route('/success')
 def success():
     all_payment_data = list(payment_data.values())
@@ -173,7 +176,7 @@ def success():
 
 @app.route('/cancel')
 def cancel():
-    return render_template('cancel.html')
+    return render_template('checkout.html')
 
 
 if __name__ == "__main__":
