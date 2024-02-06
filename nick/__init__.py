@@ -280,7 +280,6 @@ def create_customer():
     referral_route = request.args.get("referral_route")
     create_customer_form = CreateCustomerForm(request.form)
 
-    # TODO: Compare emails for customer
     if request.method == "POST":
         user_db = shelve.open('user.db', 'c')
         new_user_id = user_db["Last ID Used"][0] + 1
@@ -340,7 +339,6 @@ def search_customer():
         customer_list = user_db["Customer"].values()
         if user_search_item in customer_list:
             # customer = customer_list[], probably retrieve and index everything e
-            # TODO: Make search index retrieve customer and staff
             pass
         else:
             return render_template('searchCustomer.html', customer=None, name=name)
@@ -571,7 +569,7 @@ def create_product():
                 image_name = "".join(random.choice(allowed_chars.lower()) for i in range(20))
                 new_filename = _image_processing_fun(image_file, image_name, 150)
             app.config["UPLOADED_IMAGES"].append(new_filename)
-            _alert_message("Image upload successfully!", 1)
+            _alert_message("Product created successfully!", 1)
 
             with shelve.open('user.db', 'c') as user_db:
                 prod_dict = user_db["Product"]
@@ -689,7 +687,7 @@ def update_product(prod_id):
                         app.config["UPLOADED_IMAGES"][i] = new_filename
                     else:
                         continue
-                _alert_message("Image updated successfully!", 1)
+                _alert_message("Product created successfully!", 1)
                 prod_dict[str(prod_id)] = product
                 user_db["Product"] = prod_dict
                 return redirect(url_for("retrieve_product", referral_route="update_product"))
@@ -732,9 +730,6 @@ def delete_product(prod_id):
         return redirect(url_for("retrieve_product", referral_route="delete_product"))
 
 
-# TODO: Download retrieve page aah as Excel or csv file.
-
-
 @app.route("/generatePDF")
 def generate_pdf():
     try:
@@ -750,11 +745,7 @@ def generate_pdf():
                     else:
                         referral_chart[2] += 1
                 stub = user_db["2023 Earnings"]
-            # Pie Chart Data
 
-            # TODO: Refactor area chart code, give up on svg
-
-            # Area Chart Data
             labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
             area_chart_data = stub
 
@@ -839,7 +830,6 @@ def generate_pdf():
                 <p> {name} </p>
             </body>
             """
-            # TODO: Exporting of database as xslx or csv
             document = weasyprint.HTML(string=parsed_html)
             pdf = document.write_pdf()
             response = Response(pdf, mimetype='application/pdf')
@@ -907,6 +897,42 @@ def table():
 
     except KeyError or IOError or EOFError:
         return redirect(url_for("/table"))
+
+
+@app.route("/productPage")
+def product_page():
+    name = _session_name()
+    user_id = session["user_id"]
+
+    try:
+        referral_route = request.args.get("referral_route")
+        with shelve.open("user.db", "r") as user_db:
+            product_list = []
+            count = 0
+            for product in user_db["Product"].values():
+                product.set_price(f"{float(product.get_price()):.2f}")
+                product_list.append(product)
+
+                count += 1
+        if count != 0 and _get_alert_msg() == "Error in updating product":
+            pass
+
+        elif count != 0 and referral_route == "update_product":
+            _alert_message("Redirected from update product", 1)
+        elif count != 0 and referral_route == "create_product":
+            pass
+        elif count != 0:
+            _alert_message("Retrieve successful", 1)
+        else:
+            _alert_message("No product created yet, create one.", 1)
+            return redirect(url_for("create_product", referral_route="retrieve_product"))
+        return render_template('productPage.html', count=count, product_list=product_list,
+                               message=_get_alert_msg(), sh_msg=_get_sh_msg(), name=name, user_id=user_id)
+
+    except EOFError or KeyError:
+        _alert_message("No product created yet, create one.", 1)
+        return redirect(url_for("create_product", referral_route="retrieve_product", count=count))
+# TODO: Update prototype for product page
 
 
 if __name__ == '__main__':
