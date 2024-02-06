@@ -1,0 +1,56 @@
+{% extends "base2.html" %}
+{% block title %}Library Loan System - Quiz {% endblock %}
+{% block content %}
+<nav>
+  <div class="bg-light border border-light">
+    <a class="navbar-brand bg-light navbar-light" href="/">ACS</a>
+    <button class="navbar-toggler border border-light" type="button" data-bs-toggle="collapse" data-bs-target="#collapsibleNavbar">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse bg-light " id="collapsibleNavbar">
+      <ul class="navbar-nav bg-light border border-light">
+        <li class="nav-item">
+          <a class="nav-link" href="/">Home</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/feedback">Feedback</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/quiz">Quiz</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/checkout">Checkout</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+<link rel="stylesheet" href="static/quiz.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <div class="container">
+        <h1>Monthly Kuizu</h1>
+        <div id="quiz"></div>
+        <div id="result" class="result"></div>
+        <button id="submit" class="button">Submit</button>
+        <button id="retry" class="button hide">Retry</button>
+        <button id="showAnswer" class="button hide">Show Answer</button>
+        <button id="saveAnswer" class="button hide" value="" onclick="saveAnswer()">Save Answer</button></a>
+        <div id="output"></div>
+    </div>
+    <script>
+        function saveAnswer() {
+            var value = getScore();
+            console.log(value);
+            $.ajax({
+                url: '/process',
+                type: 'POST',
+                data: { 'data': value },
+            }).done(function() {
+              window.location.href = "/retrieve_quiz_score";
+            });
+        }
+    </script>
+
+    <script src="static/quiz.js"></script>
+
+{% endblock %}

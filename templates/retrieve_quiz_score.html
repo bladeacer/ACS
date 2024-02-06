@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Library Loan System - Retrieve Score{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="display-4 text-center mb-4">Leaderboard</h1>
+    <div class="text-center">
+        {% if quiz_dict %}
+            {% set count = quiz_dict|length %}
+            <p class="lead">
+                {% if count == 1 %}
+                    There is 1 quiz score
+                {% else %}
+                    There are {{ count }} quiz scores
+                {% endif %}
+            </p>
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th class="text-center">User ID</th>
+                            <th class="text-center">Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        {% for user_id, score in quiz_dict.items() %}
+                            <tr>
+                                <td class="text-center">{{ user_id }}</td>
+                                <td class="text-center">{{ score }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="lead">No quiz scores available</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+$(document).ready(function () {
+    // define a function to update the leaderboard
+    function updateLeaderboard(lastTimestamp) {
+        $.ajax({
+            type: 'POST',
+            url: "{{ url_for('leaderboard') }}",
+            data: {timestamp: lastTimestamp},
+            success: function (data) {
+                // update the leaderboard table with the new data
+                var leaderboardBody = $('#leaderboard-body');
+                leaderboardBody.empty(); // clear existing rows
+                $.each(data, function (userId, score) {
+                    leaderboardBody.append("<tr><td>" + userId + "</td><td>" + score + "</td></tr>");
+                });
+                // call the same function again after 5 seconds
+                setTimeout(function () {
+                    updateLeaderboard(data.timestamp);
+                }, 5000);
+            },
+            error: function (error) {
+                console.log("Error retrieving leaderboard data: " + error);
+            }
+        });
+    }
+
+    // call the updateLeaderboard function for the first time
+    updateLeaderboard(null);
+});
+</script>
+{% endblock %}
+
+
+
+
+
