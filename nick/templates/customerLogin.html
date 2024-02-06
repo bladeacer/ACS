@@ -4,7 +4,7 @@
 {% block content %}
 {% from "includes/_acs_formHelper.html" import render_field %}
 
-<script src="static/showPassword.js"></script>
+<script src="./static/js/showPassword.js"></script>
 <h1 class="display-4">Customer Login</h1>
 <form method="POST" action="">
     <div class="form-group">
@@ -13,10 +13,11 @@
     <div class="form-group">
     {{ render_field(form.password, class="form-control") }}
     </div>
+    <input type="checkbox" onclick="showPassword()"> Show Password<br>
     <div class="error">{{ error }}</div>
-    <input type="checkbox" onclick="showPassword()">Show Password<br>
     Not a member? <a href="/customerRegister">Sign Up</a><br>
     <a href="/">Back</a><br>
+    <a href="/staffLogin"> Staff Login</a>
     <input type="submit" value="Submit" class="btn btn-primary"/>
 </form>
 

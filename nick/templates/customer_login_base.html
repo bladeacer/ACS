@@ -20,7 +20,18 @@
         {% block content %}
         {% endblock %}
     </div>
-
+                {% block footer %}
+            <!-- Footer -->
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>Copyright &copy; Amsyar's Card Shop
+                            <script>document.write(new Date().getFullYear())</script>
+                        </span>
+                    </div>
+                </div>
+            </footer>
+            {% endblock %}
     {% block scripts %}
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"
             integrity="sha384-7+zCNj/IqJ95wo16oMtfsKbZ9ccEh31eOz1HGyDuCQ6wgnyJNSYdrPa03rtR1zdB"

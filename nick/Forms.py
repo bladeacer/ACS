@@ -5,10 +5,36 @@ from flask_wtf import FlaskForm
 
 
 class CustomerForm(FlaskForm):
-    password = PasswordField('Password', [validators.Length(min=1, max=150), validators.DataRequired()], render_kw={'id': 'password_input'})
+    password = PasswordField('Password', [validators.Length(min=1, max=150), validators.DataRequired()],
+                           render_kw={'id': 'password_input'})
     email = EmailField('Email', [validators.Length(min=1, max=150), validators.DataRequired()])
     name = StringField('Name', [validators.Length(min=1, max=150), validators.DataRequired()])
-
+    gender = SelectField(
+        'Gender',
+        [validators.DataRequired()],
+        choices=[('', 'Select'), ('F', 'Female'), ('M', 'Male'), ('O', 'Other')],
+        default=''
+    )
+    phone_number = TelField(
+        'Phone Number',
+        [
+            validators.Length(min=8, max=8),
+            validators.DataRequired()
+        ]
+    )
+    mailing_address = StringField(
+        'Mailing Address',
+        [validators.Length(min=1, max=150), validators.DataRequired()]
+    )
+    referral = SelectField("Referral:", [validators.DataRequired()],
+                           choices=[
+                               ("", "Select"),
+                               ("Direct", "Direct"),
+                               ("Social", "Social"),
+                               ("Referral", "Referral")
+                           ],
+                           default="",
+                           )
 
 class CustomerChangePasswordForm(FlaskForm):
     old_password = PasswordField('Old Password', [validators.Length(min=1, max=150), validators.DataRequired()],

@@ -25,6 +25,7 @@
     <div class="form-group">
         {{ render_field(form.password, class="form-control") }}
     </div>
+    <input type="checkbox" onclick="showPassword()"> Show Password <br>
     {% if password_errors %}
     <div class="error">
         <ul>
@@ -34,7 +35,6 @@
         </ul>
     </div>
     {% endif %}
-    <input type="checkbox" onclick="showPassword()"> Show Password <br>
       <div class="form-group">
         {{ render_field(form.gender, class="form-control") }}
       </div>

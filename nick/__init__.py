@@ -187,7 +187,7 @@ def _parse_files_db(database_key, data_file, data_name, old_filename):
     return filename
 
 
-@app.route('/custlogin', methods=['GET', 'POST'])
+@app.route('/', methods=['GET', 'POST'])
 def customer_login():
     customer_login_form = CustomerForm(request.form)
     if request.method == "GET" or (request.method == "POST" and customer_login_form.validate()):
@@ -202,14 +202,15 @@ def customer_login():
         if not matching_passwords(customer_login_form.password.data, customer.get_password()):
             return render_template('customerLogin.html', form=CustomerForm(), error=login_error)
         session["user_id"] = customer.get_user_id()
-        return redirect(url_for("customer_home"))
+        # return redirect(url_for("customer_products"))
+        # TODO: Render product page and all
 
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/customerRegister', methods=['GET', 'POST'])
 def customer_register():
-    customer_register_form = CreateCustomerForm(request.form)
+    customer_register_form = CustomerForm(request.form)
     if request.method == "GET" or (request.method == "POST" and customer_register_form.validate()):
-        return render_template('customerRegister.html', form=CreateCustomerForm())
+        return render_template('customerRegister.html', form=CustomerForm())
     with shelve.open('user.db', 'c') as user_db:
         customer_dict = user_db["Customer"]
         if customer_dict:
@@ -235,7 +236,7 @@ def customer_register():
             customer_id=new_customer_id,
             name=customer_register_form.name.data,
             email=customer_register_form.email.data,
-            password=customer_register_form.password.data,
+            password=HashedPassword(customer_register_form.password.data),
             gender=customer_register_form.gender.data,
             phone_number=customer_register_form.phone_number.data,
             mailing_address=customer_register_form.mailing_address.data,
@@ -469,7 +470,7 @@ def home():
                     referral_chart[2] += 1
             except AttributeError:
                 return redirect(url_for("create_customer", referral_route="home"))
-        stub = user_db["2023 Earnings"]
+            stub = user_db["2023 Earnings"]
 
     pie_chart_data = referral_chart
     area_chart_data = stub
@@ -509,44 +510,49 @@ def profile():
 def create_customer():
     name = _session_name()
     user_id = session["user_id"]
-    referral_route = request.args.get("referral_route")
-    create_customer_form = CreateCustomerForm(request.form)
+    customer_register_form = CreateCustomerForm(request.form)
 
-    unfunny = render_template('createCustomer.html', form=create_customer_form, message=_get_alert_msg(),
-                              sh_msg=_get_sh_msg(), name=name, user_id=user_id)
-
-    if request.method == "POST":
-        user_db = shelve.open('user.db', 'c')
-        new_user_id = user_db["Last ID Used"][0] + 1
-        new_customer_id = user_db["Last ID Used"][1] + 1
-        customer_email = create_customer_form.email.data
-        customer_password = create_customer_form.password.data
-        if check_existing_email(customer_email, user_db["Customer"]):
-            _alert_message("Use unique credentials!", 1)
-            return unfunny
-        if check_password_errors(customer_password):
-            _alert_message(check_password_errors(customer_password), 1)
-            return unfunny
-        customer = Customer(
-            user_id=new_user_id,
-            customer_id=new_customer_id,
-            name=create_customer_form.name.data,
-            email=create_customer_form.email.data,
-            password=create_customer_form.password.data,
-            gender=create_customer_form.gender.data,
-            phone_number=create_customer_form.phone_number.data,
-            mailing_address=create_customer_form.mailing_address.data,
-            referral=create_customer_form.referral.data
-        )
-        customer_dict = user_db["Customer"]
-        customer_dict[str(new_user_id)] = customer
-        user_db["Customer"] = customer_dict
-        user_db["Last ID Used"] = [new_user_id, new_customer_id, user_db["Last ID Used"][2]]
-        user_db.close()
+    email_error = ""
+    unfunny = render_template('createCustomer.html', form=customer_register_form, message=_get_alert_msg(),
+                              sh_msg=_get_sh_msg(), name=name, user_id=user_id, email_error=email_error)
+    if request.method == "GET" or (request.method == "POST" and customer_register_form.validate()):
+        return render_template('create_Customer.html', form=CustomerForm())
+    else:
+        with shelve.open('user.db', 'c') as user_db:
+            customer_dict = user_db["Customer"]
+            if customer_dict:
+                new_user_id = user_db["Last ID Used"][0] + 1
+                new_customer_id = user_db["Last ID Used"][1] + 1
+            else:
+                new_user_id = 1
+                new_customer_id = 1
+            customer_email = customer_register_form.email.data
+            email_error = ''
+            if check_existing_email(customer_email, customer_dict):
+                email_error = "Email already exists"
+            customer_password = customer_register_form.password.data
+            password_errors = check_password_errors(customer_password)
+            if password_errors and email_error:
+                _alert_message(password_errors, 1)
+                return unfunny
+            elif password_errors:
+                _alert_message(password_errors, 1)
+                return unfunny
+            customer = Customer(
+                user_id=new_user_id,
+                customer_id=new_customer_id,
+                name=customer_register_form.name.data,
+                email=customer_register_form.email.data,
+                password=HashedPassword(customer_register_form.password.data),
+                gender=customer_register_form.gender.data,
+                phone_number=customer_register_form.phone_number.data,
+                mailing_address=customer_register_form.mailing_address.data,
+                referral=customer_register_form.referral.data
+            )
+            customer_dict[new_user_id] = customer
+            user_db["Customer"] = customer_dict
+            user_db["Last ID Used"] = [new_user_id, new_customer_id, user_db["Last ID Used"][2]]
         return redirect(url_for("retrieve_customer", referral_route="create_customer"))
-    if referral_route == "home":
-        _alert_message()
-    return unfunny
 
 
 @app.route('/retrieveCustomer')
@@ -610,8 +616,12 @@ def clear_customer():
 # TODO: Validation from Jake's in CRUD
 @app.route('/createStaff', methods=['GET', 'POST'])
 def create_staff():
-    user_id = session["user_id"]
-    name = _session_name()
+    try:
+        user_id = session["user_id"]
+        name = _session_name()
+    except KeyError:
+        user_id = ""
+        name = ""
 
     create_staff_form = CreateStaffForm(request.form)
     referral_route = request.args.get("referral_route")
@@ -670,8 +680,12 @@ def create_staff():
 
 @app.route('/retrieveStaff')
 def retrieve_staff():
-    name = _session_name()
-    user_id = session["user_id"]
+    try:
+        user_id = session["user_id"]
+        name = _session_name()
+    except KeyError:
+        user_id = ""
+        name = ""
 
     try:
         referral_route = request.args.get("referral_route")
@@ -754,7 +768,7 @@ def update_staff(user_id):
             update_staff_form.new_gender.data = staff.get_gender()
             update_staff_form.new_phone_number.data = int(staff.get_phone_number())
             update_staff_form.new_mailing_address.data = staff.get_mailing_address()
-        return render_template('updateStaff2.html', form=update_staff_form, name=name, user_id=use_id)
+        return render_template('updateStaff.html', form=update_staff_form, name=name, user_id=use_id)
 
     except EOFError or KeyError:
         _alert_message("Error in updating staff", 1)
@@ -983,13 +997,6 @@ def generate_pdf():
             name = _session_name()
             referral_chart = [0, 0, 0]
             with shelve.open("user.db", "r") as user_db:
-                for customer in user_db["Customer"].values():
-                    if customer.get_referral() == "Direct":
-                        referral_chart[0] += 1
-                    elif customer.get_referral() == "Social":
-                        referral_chart[1] += 1
-                    else:
-                        referral_chart[2] += 1
                 stub = user_db["2023 Earnings"]
 
             labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]

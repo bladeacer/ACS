@@ -57,6 +57,7 @@
       <div class="form-group">
         {{ render_field(form.password, class="form-control") }}
       </div>
+        <input type="checkbox" onclick="showPassword()"> Show Password<br>
       <div class="form-group">
         {{ render_field(form.gender, class="form-control") }}
       </div>
@@ -92,4 +93,6 @@
     <!-- Page level custom scripts -->
     <script src="{{url_for('static', filename='js/demo/chart-area-demo.js')}}"></script>
     <script src="{{url_for('static', filename='js/demo/chart-pie-demo.js')}}"></script>
+
+    <script src="./static/js/showPassword.js"></script>
 {% endblock %}
