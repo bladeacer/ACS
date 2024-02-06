@@ -12,7 +12,7 @@ app.secret_key = '2b$12$lg1PlCwZACW0Hy5RumzuZe'
 
 @app.route('/')
 def home():
-    return render_template('user_database_home.html')
+    return render_template('index.html')
 
 
 # customer routes
@@ -102,7 +102,7 @@ def customer_profile():
             customer_profile_form.gender.data = customer.get_gender()
             customer_profile_form.phone_number.data = customer.get_phone_number()
             customer_profile_form.mailing_address.data = customer.get_mailing_address()
-        return render_template('customerProfile.html', form=customer_profile_form)
+        return render_template('customerProfile.html', form=customer_profile_form, user_id=customer.get_user_id())
 
 
 @app.route('/customerChangePassword', methods=['GET', 'POST'])

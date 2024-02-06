@@ -28,7 +28,8 @@
   {% if saved_message %}
     <span style="color: grey; font-style: italic">{{ saved_message }}</span><br>
   {% endif %}
-  <input type="submit" value="Submit Changes" class="btn btn-primary"/>
+  <input type="submit" value="Submit Changes" class="btn btn-primary"/><br><br>
 </form>
-
+<a href="/"><input type="submit" value="Log Out" class="btn btn-danger"
+                   onclick="return confirm('Are you sure you want to logout?');"/></a>
 {% endblock %}
