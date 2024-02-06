@@ -3,7 +3,7 @@ import shelve
 import os
 from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory, Response
 from Forms import (CreateCustomerForm, CreateStaffForm, LoginForm, UpdateStaffForm, ProductForm, UpdateProductForm,
-                   UploadDataFile)
+                   UploadDataFile, CustomerForm, UpdateCustomerForm, CustomerChangePasswordForm, InputUserForm)
 from User import Customer, Staff, Product
 from werkzeug.utils import secure_filename
 import cv2
@@ -12,7 +12,9 @@ import string
 import weasyprint
 import pandas as pd
 import numpy as np
+from user_validators import *
 app = Flask(__name__)
+# TODO: Import Jake's dependencies
 
 
 def _staff_details():
@@ -185,7 +187,233 @@ def _parse_files_db(database_key, data_file, data_name, old_filename):
     return filename
 
 
-@app.route("/", methods=['GET', 'POST'])
+@app.route('/custlogin', methods=['GET', 'POST'])
+def customer_login():
+    customer_login_form = CustomerForm(request.form)
+    if request.method == "GET" or (request.method == "POST" and customer_login_form.validate()):
+        return render_template('customerLogin.html', form=CustomerForm())
+    with shelve.open('user.db', 'c') as user_db:
+        login_error = "Incorrect email or password"
+        customer_dict = user_db['Customer']
+        # returns customer object if email exists in database
+        customer = check_existing_email(customer_login_form.email.data, customer_dict)
+        if not customer:
+            return render_template('customerLogin.html', form=CustomerForm(), error=login_error)
+        if not matching_passwords(customer_login_form.password.data, customer.get_password()):
+            return render_template('customerLogin.html', form=CustomerForm(), error=login_error)
+        session["user_id"] = customer.get_user_id()
+        return redirect(url_for("customer_home"))
+
+
+@app.route('/', methods=['GET', 'POST'])
+def customer_register():
+    customer_register_form = CreateCustomerForm(request.form)
+    if request.method == "GET" or (request.method == "POST" and customer_register_form.validate()):
+        return render_template('customerRegister.html', form=CreateCustomerForm())
+    with shelve.open('user.db', 'c') as user_db:
+        customer_dict = user_db["Customer"]
+        if customer_dict:
+            new_user_id = user_db["Last ID Used"][0] + 1
+            new_customer_id = user_db["Last ID Used"][1] + 1
+        else:
+            new_user_id = 1
+            new_customer_id = 1
+        customer_email = customer_register_form.email.data
+        email_error = ''
+        if check_existing_email(customer_email, customer_dict):
+            email_error = "Email already exists"
+        customer_password = customer_register_form.password.data
+        password_errors = check_password_errors(customer_password)
+        if password_errors and email_error:
+            return render_template('customerRegister.html', form=customer_register_form,
+                                   password_errors=password_errors, email_error="Email already exists")
+        elif password_errors:
+            return render_template('customerRegister.html', form=customer_register_form,
+                                   password_errors=password_errors, email_error='')
+        customer = Customer(
+            user_id=new_user_id,
+            customer_id=new_customer_id,
+            name=customer_register_form.name.data,
+            email=customer_register_form.email.data,
+            password=customer_register_form.password.data,
+            gender=customer_register_form.gender.data,
+            phone_number=customer_register_form.phone_number.data,
+            mailing_address=customer_register_form.mailing_address.data,
+            referral=customer_register_form.referral.data
+        )
+        customer_dict[new_user_id] = customer
+        user_db["Customer"] = customer_dict
+        user_db["Last ID Used"] = [new_user_id, new_customer_id, user_db["Last ID Used"][2]]
+    return redirect(url_for('customer_login'))
+
+
+@app.route('/customerProfile', methods=['GET', 'POST'])
+def customer_profile():
+    customer_profile_form = UpdateCustomerForm(request.form)
+    session_user_id = session["user_id"]
+    if request.method == 'POST' and customer_profile_form.validate():
+        with shelve.open('user.db', 'c') as user_db:
+            customer_dict = user_db['Customer']
+            customer = customer_dict.get(session_user_id)
+            customer.set_name(customer_profile_form.name.data)
+            customer.set_email(customer_profile_form.email.data)
+            customer.set_gender(customer_profile_form.gender.data)
+            customer.set_phone_number(customer_profile_form.phone_number.data)
+            customer.set_mailing_address(customer_profile_form.mailing_address.data)
+            customer_dict[session_user_id] = customer
+            user_db['Customer'] = customer_dict
+        return render_template('customerProfile.html', form=customer_profile_form, saved_message='Saved Changes')
+    else:
+        with shelve.open('user.db', 'c') as user_db:
+            customer_dict = user_db['Customer']
+            customer = customer_dict[session_user_id]
+            customer_profile_form.name.data = customer.get_name()
+            customer_profile_form.email.data = customer.get_email()
+            customer_profile_form.gender.data = customer.get_gender()
+            customer_profile_form.phone_number.data = customer.get_phone_number()
+            customer_profile_form.mailing_address.data = customer.get_mailing_address()
+        return render_template('customerProfile.html', form=customer_profile_form)
+
+
+@app.route('/customerChangePassword', methods=['GET', 'POST'])
+def customer_change_password():
+    change_password_form = CustomerChangePasswordForm(request.form)
+    session_user_id = session["user_id"]
+    if request.method == 'POST' and change_password_form.validate():
+        with shelve.open('user.db', 'c') as user_db:
+            customer_dict = user_db['Customer']
+            customer = customer_dict.get(session_user_id)
+            if not matching_passwords(change_password_form.old_password.data, customer.get_password()):
+                return render_template('customerChangePassword.html', form=change_password_form,
+                                       incorrect_password_error='Incorrect Password')
+            if matching_passwords(change_password_form.new_password.data, customer.get_password()):
+                return render_template('customerChangePassword.html', form=change_password_form,
+                                       matching_old_password_error='Cannot match old password')
+            password_errors = check_password_errors(change_password_form.new_password.data)
+            if password_errors:
+                return render_template('customerChangePassword.html', form=change_password_form,
+                                       password_errors=password_errors)
+            customer.set_password(HashedPassword(change_password_form.new_password.data))
+            customer_dict[session_user_id] = customer
+            user_db['Customer'] = customer_dict
+        return redirect(url_for('customer_profile'))
+    return render_template('customerChangePassword.html', form=change_password_form)
+
+
+@app.route('/inputCustomer', methods=["GET", "POST"])
+def input_customers():
+    input_customer_form = InputUserForm(request.form)
+    if not (request.method == "POST" and input_customer_form.validate()):
+        return render_template("inputUser.html", form=input_customer_form, user="Customer", error_list="")
+    customer_input_list = convert_multiline_string_to_list(input_customer_form.user_details.data)
+    with shelve.open('user.db', 'c') as user_db:
+        main_error_list = []
+        new_customer = []
+        customer_dict = user_db['Customer']
+        if customer_dict:
+            last_user_id = user_database["Last ID Used"][0]
+            last_customer_id = user_database["Last ID Used"][1]
+        else:
+            last_user_id = 0
+            last_customer_id = 0
+        for i, line in enumerate([(last_customer_id+i, last_user_id+i, customer_input_list[i-1]) for i, x in
+                                  enumerate(customer_input_list, 1)]):
+            customer_details = line[2].split(', ')
+            if len(customer_details) != 6:
+                main_error_list.append((i+1, f"list index out of range: {len(customer_details)} items"))
+                continue
+            customer_mailing_address = customer_details[5]
+            if customer_mailing_address[-2:] == "\r":
+                customer_mailing_address = customer_mailing_address[:-2]
+            customer = Customer(
+                line[0],  # user id
+                line[1],  # customer id
+                customer_details[0],  # name
+                customer_details[1],  # email
+                customer_details[2],  # password
+                customer_details[3],  # gender
+                customer_details[4],  # phone number
+                customer_mailing_address  # mailing address
+            )
+            # returns customer object if inputs are valid, else returns list of errors
+            valid_customer = check_customer_errors(customer, customer_dict)
+            if isinstance(valid_customer, Customer):
+                new_customer.append(valid_customer)
+            else:
+                customer_errors = valid_customer
+                if len(customer_errors) > 1:
+                    customer_errors = ", ".join(customer_errors)
+                else:
+                    customer_errors = customer_errors[0]
+                main_error_list.append(tuple([line[0], customer_errors]))
+        if main_error_list:
+            send_error_list = main_error_list.copy()
+            main_error_list.clear()
+            return render_template('inputUser.html', form=input_customer_form,
+                                   error_list=send_error_list, user="Customer")
+        for customer in new_customer:
+            customer_dict[customer.get_user_id()] = customer
+            user_db["Customer"] = customer_dict
+    return redirect(url_for('retrieve_customer'))
+
+
+@app.route('/inputStaff', methods=["GET", "POST"])
+def input_staff():
+    input_staff_form = InputUserForm(request.form)
+    if not (request.method == "POST" and input_staff_form.validate()):
+        return render_template("inputUser.html", form=input_staff_form, user="Staff", error_list="")
+    staff_input_list = convert_multiline_string_to_list(input_staff_form.user_details.data)
+    with shelve.open('user.db', 'c') as user_db:
+        main_error_list = []
+        new_staff = []
+        staff_dict = user_db['Staff']
+        if staff_dict:
+            last_user_id = user_database["Last ID Used"][0]
+            last_staff_id = user_database["Last ID Used"][2]
+        else:
+            last_user_id = 0
+            last_staff_id = 0
+        for i, line in enumerate([(last_staff_id+i, last_user_id+i, staff_input_list[i-1]) for i, x in
+                                  enumerate(staff_input_list, 1)]):
+            staff_details = line[2].split(', ')
+            if len(staff_details) != 9:
+                main_error_list.append((i+1, f"list index out of range: {len(staff_details)} items"))
+                continue
+            staff_mailing_address = staff_details[8]
+            if staff_mailing_address[-2:] == "\r":
+                staff_mailing_address = staff_mailing_address[:-2]
+            staff = Staff(
+                line[0],  # user id
+                line[1],  # staff id
+                staff_details[0],  # name
+                staff_details[1],  # email
+                staff_details[2],  # password
+                staff_details[3],  # start date
+                staff_details[4],  # position
+                staff_details[5],  # total earnings
+                staff_details[6],  # gender
+                staff_details[7],  # phone number
+                staff_mailing_address  # mailing address
+            )
+            # returns customer object if inputs are valid, else returns list of errors
+            valid_staff = check_staff_errors(staff, staff_dict)
+            if isinstance(valid_staff, Staff):
+                new_staff.append(valid_staff)
+            else:
+                main_error_list.append(tuple([line[0], valid_staff]))
+        user_database["Last ID Used"] = [last_user_id + 10, user_database["Last ID Used"][1], last_staff_id + 10]
+        if main_error_list:
+            send_error_list = main_error_list.copy()
+            main_error_list.clear()
+            return render_template('inputUser.html', form=input_staff_form, error_list=send_error_list, user="Staff")
+        for staff in new_staff:
+            staff_dict[staff.get_user_id()] = staff
+            user_db["Staff"] = staff_dict
+    return redirect(url_for('retrieve_staff'))
+
+
+# TODO: Yeet from app route / if user clicks staff login button
+@app.route("/staffLogin", methods=['GET', 'POST'])
 def login():
     try:
         _login_session_handler()
@@ -255,24 +483,28 @@ def home():
 
 @app.route("/profile")
 def profile():
-    _staff_details()
-    staff_id = session["id"]
-    user_id = session["user_id"]
-    name = _session_name()
-    experience = session["details"][1]
-    requests = session["details"][2]
-    earnings = session["details"][3]
-    email = session["details"][4]
-    connections = session["details"][5]
-    desc = session["details"][6]
-    number = session["details"][7]
-    position = session["details"][8]
+    try:
+        _staff_details()
+        staff_id = session["id"]
+        user_id = session["user_id"]
+        name = _session_name()
+        experience = session["details"][1]
+        requests = session["details"][2]
+        earnings = session["details"][3]
+        email = session["details"][4]
+        connections = session["details"][5]
+        desc = session["details"][6]
+        number = session["details"][7]
+        position = session["details"][8]
+    except KeyError or EOFError or IOError:
+        return redirect(url_for("create_customer"))
 
     return render_template("profile.html", name=name, experience=experience, requests=requests,
                            earnings=earnings, email=email, connections=connections, desc=desc, number=number,
                            staff_id=staff_id, position=position, user_id=user_id)
 
 
+# TODO: yeet functions check_existing_email etc
 @app.route('/createCustomer', methods=['GET', 'POST'])
 def create_customer():
     name = _session_name()
@@ -280,10 +512,21 @@ def create_customer():
     referral_route = request.args.get("referral_route")
     create_customer_form = CreateCustomerForm(request.form)
 
+    unfunny = render_template('createCustomer.html', form=create_customer_form, message=_get_alert_msg(),
+                              sh_msg=_get_sh_msg(), name=name, user_id=user_id)
+
     if request.method == "POST":
         user_db = shelve.open('user.db', 'c')
         new_user_id = user_db["Last ID Used"][0] + 1
         new_customer_id = user_db["Last ID Used"][1] + 1
+        customer_email = create_customer_form.email.data
+        customer_password = create_customer_form.password.data
+        if check_existing_email(customer_email, user_db["Customer"]):
+            _alert_message("Use unique credentials!", 1)
+            return unfunny
+        if check_password_errors(customer_password):
+            _alert_message(check_password_errors(customer_password), 1)
+            return unfunny
         customer = Customer(
             user_id=new_user_id,
             customer_id=new_customer_id,
@@ -303,8 +546,7 @@ def create_customer():
         return redirect(url_for("retrieve_customer", referral_route="create_customer"))
     if referral_route == "home":
         _alert_message()
-    return render_template('createCustomer.html', form=create_customer_form, message=_get_alert_msg(),
-                           sh_msg=_get_sh_msg(), name=name, user_id=user_id)
+    return unfunny
 
 
 @app.route('/retrieveCustomer')
@@ -336,13 +578,12 @@ def search_customer():
 
     user_search_item = request.get_data(as_text=True)[12:]
     with shelve.open("user.db", "c") as user_db:
-        customer_list = user_db["Customer"].values()
-        if user_search_item in customer_list:
-            # customer = customer_list[], probably retrieve and index everything e
-            pass
+        customer_dict = user_db['Customer']
+        if user_search_item in customer_dict:
+            customer = customer_dict[user_search_item]
         else:
-            return render_template('searchCustomer.html', customer=None, name=name)
-    return render_template('searchCustomer.html', name=name, user_id=user_id)
+            return render_template('searchCustomer.html', customer=None, name=name, user_id=user_id)
+    return render_template('searchCustomer.html', name=name, user_id=user_id, customer=customer)
 
 
 @app.route('/deleteCustomer/<int:user_id>', methods=['POST'])
@@ -366,6 +607,7 @@ def clear_customer():
     return redirect(url_for('create_customer'))
 
 
+# TODO: Validation from Jake's in CRUD
 @app.route('/createStaff', methods=['GET', 'POST'])
 def create_staff():
     user_id = session["user_id"]
@@ -461,22 +703,19 @@ def retrieve_staff():
         return redirect(url_for("create_staff", referral_route="retrieve_staff"))
 
 
-# @app.route('/searchStaff', methods=['POST'])
-# def search_staff():
-#     name = _session_name()
-#     user_id = session["user_id"]
-#
-#     user_search_item = int(request.get_data(as_text=True)[12:])
-#     with shelve.open("user.db", "r") as user_db:
-#         staff_dict = user_db['Staff']
-#         if user_search_item in staff_dict:
-#             staff = staff_dict[user_search_item]
-#             staff.set_total_earnings(float(staff.get_total_earnings()))
-#             start_date = staff.get_start_date()
-#             staff.set_start_date(f"{start_date.day}/{start_date.month}/{start_date.year}")
-#         else:
-#             staff = None
-#     return render_template('searchStaff.html', staff=staff, name=name, user_id=user_id)
+@app.route('/searchStaff', methods=['POST'])
+def search_staff():
+    user_search_item = int(request.get_data(as_text=True)[12:])
+    with shelve.open("user.db", "r") as user_db:
+        staff_dict = user_db['Staff']
+        if user_search_item in staff_dict:
+            staff = staff_dict[user_search_item]
+            staff.set_total_earnings(int(staff.get_total_earnings()))
+            start_date = staff.get_start_date()
+            staff.set_start_date(f"{start_date.day}/{start_date.month}/{start_date.year}")
+        else:
+            return render_template('searchStaff.html', staff=None)
+    return render_template('searchStaff.html', staff=staff)
 
 
 @app.route('/updateStaff/<int:user_id>', methods=['GET', 'POST'])
@@ -515,7 +754,7 @@ def update_staff(user_id):
             update_staff_form.new_gender.data = staff.get_gender()
             update_staff_form.new_phone_number.data = int(staff.get_phone_number())
             update_staff_form.new_mailing_address.data = staff.get_mailing_address()
-        return render_template('updateStaff.html', form=update_staff_form, name=name, user_id=use_id)
+        return render_template('updateStaff2.html', form=update_staff_form, name=name, user_id=use_id)
 
     except EOFError or KeyError:
         _alert_message("Error in updating staff", 1)
@@ -530,6 +769,13 @@ def delete_staff(user_id):
         temporary_dict.pop(str(user_id))
         user_db['Staff'] = temporary_dict
     return redirect(url_for('retrieve_staff', referral_route="delete_staff"))
+
+
+@app.route('/clearStaff')
+def clear_staff():
+    with shelve.open('user.db', 'w') as user_db:
+        user_db['Staff'] = {}
+    return redirect(url_for('retrieve_staff'))
 
 
 @app.route("/createProduct", methods=["GET", "POST"])
@@ -956,7 +1202,9 @@ if __name__ == '__main__':
                 user_database["Product Pointer"] = 0  # used to create unique product ids
                 user_database["2023 Earnings"] = [0, 69420, 150000, 79825, 103159, 209475, 256081, 291080, 315000,
                                                   360000, 425000, 540000]
-
     except KeyError or IOError or UnboundLocalError or EOFError as database_error:
         print("Error encountered opening user.db:", database_error)
     app.run(debug=True)
+
+
+# TODO: Use old system, refactor Jake's new user id and all

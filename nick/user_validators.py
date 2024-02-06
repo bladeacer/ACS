@@ -192,8 +192,8 @@ def check_password_errors(password):
     if " " in password:
         error_list.append("Whitespaces not allowed in password")
     if error_list:
-        return error_list
-    return []
+        return str(error_list)
+    return None
 
 
 def contains_special_character(string):

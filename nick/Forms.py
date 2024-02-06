@@ -4,6 +4,19 @@ from wtforms import (TelField, DateField, StringField, SelectField, validators,
 from flask_wtf import FlaskForm
 
 
+class CustomerForm(FlaskForm):
+    password = PasswordField('Password', [validators.Length(min=1, max=150), validators.DataRequired()], render_kw={'id': 'password_input'})
+    email = EmailField('Email', [validators.Length(min=1, max=150), validators.DataRequired()])
+    name = StringField('Name', [validators.Length(min=1, max=150), validators.DataRequired()])
+
+
+class CustomerChangePasswordForm(FlaskForm):
+    old_password = PasswordField('Old Password', [validators.Length(min=1, max=150), validators.DataRequired()],
+                                 render_kw={'id': 'password_input'})
+    new_password = PasswordField('New Password', [validators.Length(min=1, max=150), validators.DataRequired()],
+                                 render_kw={'id': 'password_input_new'})
+
+
 class CreateCustomerForm(FlaskForm):
     name = StringField('Name', [validators.Length(min=1, max=150), validators.DataRequired()])
     email = EmailField('Email', [validators.Length(min=1, max=150), validators.DataRequired()])
@@ -92,10 +105,6 @@ class LoginForm(FlaskForm):
     password = PasswordField("Password", [validators.DataRequired(), validators.Length(8, 150)])
 
 
-class InputUserForm(FlaskForm):
-    user_details = TextAreaField("Enter details here:", [validators.DataRequired()])
-
-
 class ProductForm(FlaskForm):
     name = StringField("Enter product name: ", [validators.Length(min=1, max=150), validators.DataRequired()])
     price = StringField('Enter price ($): ', [validators.Length(min=1, max=150), validators.DataRequired()],
@@ -127,4 +136,47 @@ class UploadDataFile(FlaskForm):
             ('Staff', 'Staff'),
         ],
         default='',
+    )
+
+
+# TODO: Update customer form
+
+
+class UpdateCustomerForm(FlaskForm):
+    name = StringField('New name', [validators.Length(min=1, max=150), validators.DataRequired()])
+    email = EmailField('New email', [validators.Length(min=1, max=150), validators.DataRequired()])
+    password = PasswordField('New password', [validators.Length(min=8, max=150), validators.DataRequired()])
+    gender = SelectField(
+        'Gender',
+        [validators.DataRequired()],
+        choices=[('', 'Select'), ('F', 'Female'), ('M', 'Male'), ('O', 'Other')],
+        default=''
+    )
+    phone_number = TelField(
+        'Phone Number',
+        [
+            validators.Length(min=8, max=8),
+            validators.DataRequired()
+        ]
+    )
+    mailing_address = StringField(
+        'Mailing Address',
+        [validators.Length(min=1, max=150), validators.DataRequired()]
+    )
+    referral = SelectField("Referral:", [validators.DataRequired()],
+                           choices=[
+                               ("", "Select"),
+                               ("Direct", "Direct"),
+                               ("Social", "Social"),
+                               ("Referral", "Referral")
+                           ],
+                           default="",
+                           )
+
+
+class InputUserForm(FlaskForm):
+    user_details = TextAreaField(
+        "Enter details here:",
+        [validators.DataRequired()],
+        render_kw={"placeholder": "Name, Email, Password etc."}
     )
