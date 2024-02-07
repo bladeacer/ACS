@@ -27,9 +27,16 @@ def feedback():
             shelf[feedback_id] = Feedback(email, category, rating, feedback_content)
             feedback_list = list(shelf.values())
 
-        return render_template('feedback_success.html', feedback_list=feedback_list)
+        return render_template('feedback_success.html')
 
     return render_template('feedback.html', error=None, form=feedback_form)
+
+
+@app.route('/feedback_confirmation', methods=['GET', 'POST'])
+def feedback_confirmation():
+    with shelve.open('feedback_data') as shelf:
+        feedback_list = list(shelf.values())
+    return render_template('feedback_confirmation.html', feedback_list=feedback_list)
 
 
 @app.route('/quiz', methods=['POST', 'GET'])
@@ -170,6 +177,12 @@ def get_payment_data(checkout_session_id):
 
 @app.route('/success')
 def success():
+    all_payment_data = list(payment_data.values())
+    return render_template('success.html', payment_data=all_payment_data)
+
+
+@app.route('/payment_data')
+def view_payment_data():
     all_payment_data = list(payment_data.values())
     return render_template('payment_data.html', payment_data=all_payment_data)
 
