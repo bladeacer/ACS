@@ -231,6 +231,9 @@ def customer_register():
         if password_errors and email_error:
             return render_template('customerRegister.html', form=customer_register_form,
                                    password_errors=password_errors, email_error="Email already exists")
+        elif email_error:
+            return render_template('customerRegister.html', form=customer_register_form,
+                                   password_errors="", email_error="Email already exists")
         elif password_errors:
             return render_template('customerRegister.html', form=customer_register_form,
                                    password_errors=password_errors, email_error='')
@@ -561,6 +564,9 @@ def create_customer():
                 return unfunny
             elif password_errors:
                 _alert_message(password_errors, 1)
+                return unfunny
+            elif email_error:
+                _alert_message(email_error, 1)
                 return unfunny
             customer = Customer(
                 user_id=new_user_id,
