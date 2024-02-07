@@ -205,7 +205,7 @@ def customer_login():
         if not matching_passwords(customer_login_form.password.data, customer.get_password()):
             return render_template('customerLogin.html', form=CustomerForm(), error=login_error)
         session["user_id"] = customer.get_user_id()
-        # return redirect(url_for("customer_products"))
+        return redirect(url_for("customer_home"))
         # TODO: Render product page and all
 
 
@@ -245,7 +245,7 @@ def customer_register():
             mailing_address=customer_register_form.mailing_address.data,
             referral=customer_register_form.referral.data
         )
-        customer_dict[new_user_id] = customer
+        customer_dict[str(new_user_id)] = customer
         user_db["Customer"] = customer_dict
         user_db["Last ID Used"] = [new_user_id, new_customer_id, user_db["Last ID Used"][2]]
     return redirect(url_for('customer_login'))
@@ -258,25 +258,27 @@ def customer_profile():
     if request.method == 'POST' and customer_profile_form.validate():
         with shelve.open('user.db', 'c') as user_db:
             customer_dict = user_db['Customer']
-            customer = customer_dict.get(session_user_id)
+            customer = customer_dict.get(str(session_user_id))
             customer.set_name(customer_profile_form.name.data)
             customer.set_email(customer_profile_form.email.data)
             customer.set_gender(customer_profile_form.gender.data)
             customer.set_phone_number(customer_profile_form.phone_number.data)
             customer.set_mailing_address(customer_profile_form.mailing_address.data)
-            customer_dict[session_user_id] = customer
+            customer_dict[str(session_user_id)] = customer
             user_db['Customer'] = customer_dict
-        return render_template('customerProfile.html', form=customer_profile_form, saved_message='Saved Changes')
+        saved_message = 'Saved Changes'
     else:
-        with shelve.open('user.db', 'c') as user_db:
+        with shelve.open('user.db', 'r') as user_db:
             customer_dict = user_db['Customer']
-            customer = customer_dict[session_user_id]
+            customer = customer_dict.get(str(session_user_id))
             customer_profile_form.name.data = customer.get_name()
             customer_profile_form.email.data = customer.get_email()
             customer_profile_form.gender.data = customer.get_gender()
             customer_profile_form.phone_number.data = customer.get_phone_number()
             customer_profile_form.mailing_address.data = customer.get_mailing_address()
-        return render_template('customerProfile.html', form=customer_profile_form)
+            saved_message = ""
+    return render_template('customerProfile.html', form=customer_profile_form,
+                           saved_message=saved_message)
 
 
 @app.route('/customerChangePassword', methods=['GET', 'POST'])
@@ -302,6 +304,25 @@ def customer_change_password():
             user_db['Customer'] = customer_dict
         return redirect(url_for('customer_profile'))
     return render_template('customerChangePassword.html', form=change_password_form)
+
+
+@app.route("/customerHome")
+def customer_home():
+    return render_template("customerHome.html")
+
+
+@app.route("/customerProducts")
+def customer_products():
+    with shelve.open("user.db", "r") as user_db:
+        product_list = []
+        count = 0
+        for product in user_db["Product"].values():
+            product.set_price(f"{float(product.get_price()):.2f}")
+            product_list.append(product)
+
+            count += 1
+    return render_template('customerProducts.html', count=count, product_list=product_list,
+                           message=_get_alert_msg(), sh_msg=_get_sh_msg())
 
 
 @app.route('/inputCustomer', methods=["GET", "POST"])
@@ -552,7 +573,7 @@ def create_customer():
                 mailing_address=customer_register_form.mailing_address.data,
                 referral=customer_register_form.referral.data
             )
-            customer_dict[new_user_id] = customer
+            customer_dict[str(new_user_id)] = customer
             user_db["Customer"] = customer_dict
             user_db["Last ID Used"] = [new_user_id, new_customer_id, user_db["Last ID Used"][2]]
         return redirect(url_for("retrieve_customer", referral_route="create_customer"))
