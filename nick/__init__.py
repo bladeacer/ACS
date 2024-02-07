@@ -477,7 +477,7 @@ def home():
     # TODO: CODE customer feedback linked up to generated pdf
     referral_route = request.args.get("referral_route")
     url_fun = request.url
-    if referral_route == "login" or "retrieve" in url_fun or "create" in url_fun or request.url_rule == "login":
+    if referral_route == "login" or "retrieve" in url_fun or "create" or "Login" in url_fun:
         _alert_message()
     _staff_details()
     name = _session_name()
@@ -543,7 +543,7 @@ def create_customer():
     unfunny = render_template('createCustomer.html', form=customer_register_form, message=_get_alert_msg(),
                               sh_msg=_get_sh_msg(), name=name, user_id=user_id, email_error=email_error)
     if request.method == "GET" or (request.method == "POST" and customer_register_form.validate()):
-        return render_template('create_Customer.html', form=CustomerForm())
+        return render_template('createCustomer.html', form=CustomerForm())
     else:
         with shelve.open('user.db', 'c') as user_db:
             customer_dict = user_db["Customer"]
