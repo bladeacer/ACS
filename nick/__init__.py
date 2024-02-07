@@ -269,7 +269,7 @@ def customer_profile():
             customer.set_mailing_address(customer_profile_form.mailing_address.data)
             customer_dict[str(session_user_id)] = customer
             user_db['Customer'] = customer_dict
-        saved_message = 'Saved Changes'
+        return redirect(url_for("customer_profile"))
     else:
         with shelve.open('user.db', 'r') as user_db:
             customer_dict = user_db['Customer']
@@ -281,7 +281,7 @@ def customer_profile():
             customer_profile_form.mailing_address.data = customer.get_mailing_address()
             saved_message = ""
     return render_template('customerProfile.html', form=customer_profile_form,
-                           saved_message=saved_message)
+                               saved_message=saved_message)
 
 
 @app.route('/customerChangePassword', methods=['GET', 'POST'])
@@ -477,7 +477,7 @@ def home():
     # TODO: CODE customer feedback linked up to generated pdf
     referral_route = request.args.get("referral_route")
     url_fun = request.url
-    if referral_route == "login" or "retrieve" in url_fun or "create" in url_fun:
+    if referral_route == "login" or "retrieve" in url_fun or "create" in url_fun or request.url_rule == "login":
         _alert_message()
     _staff_details()
     name = _session_name()
