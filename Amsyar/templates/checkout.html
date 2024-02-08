@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}Library Loan System - Checkout{% endblock %}
+
+{% block content %}
+  <title>Shopping Cart</title>
+  <script src="https://js.stripe.com/v3/"></script>
+
+  <style>
+    /* General Styles */
+    body {
+      background-color: #f4f4f4;
+      font-family: Arial, sans-serif;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h3 {
+      margin-top: 0;
+    }
+
+    form {
+      background-color: #fff;
+      border: 1px solid #ccc;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    input[type="email"],
+    input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+
+button[type="submit"] {
+  background-color: black;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 20px;
+}
+
+    button[type="submit"]:hover {
+      background-color: #B9B3A9;
+    }
+
+    /* Product Styles */
+    .product-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-start;
+      margin-top: 20px;
+    }
+
+.product {
+  width: 200px;
+  height: 475px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+  margin: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.product-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.product-info img {
+  max-width: 150px;
+  margin-top: 10px;
+}
+
+.product h4 {
+  margin-bottom: 5px;
+}
+
+.product .price {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.product-quantity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: auto;
+}
+
+.product-quantity label {
+  margin-bottom: 5px;
+}
+
+.product-quantity .quantity-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 5px;
+}
+
+.product-quantity .quantity-controls button {
+  background-color: #fff;
+  color: black;
+  width: 30px;
+  height: 30px;
+  border: 1px solid black;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  margin: 0 5px;
+}
+
+.product-quantity .quantity-controls button:hover {
+  background-color: #B9B3A9;
+}
+
+.product-quantity .quantity-input {
+  text-align: center;
+  font-size: 16px;
+  width: 50px;
+  margin: 0 5px;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  padding: 5px;
+  box-sizing: border-box;
+}
+    .product-quantity label {
+      margin-right: 10px;
+    }
+  </style>
+
+  <body>
+    <h3>Shopping Cart</h3>
+    <form action="{{ url_for('create_checkout_session') }}" method="post">
+      <label for="email">Email:</label>
+      <input type="email" id="email" name="email" required>
+
+      <div class="product-container">
+        <div class="product">
+          <div class="product-info">
+            <img src="{{ url_for('static', filename='Images/Screenshot 2023-12-07 130842.png') }}" alt="Pokemon: Chilling Reign">
+            <h4>Pokemon: Chilling Reign</h4>
+            <div class="price">$250.00</div>
+          </div>
+          <div class="product-quantity">
+            <label for="quantity_item_1">Quantity:</label>
+            <div class="quantity-controls">
+              <button type="button" class="decrease-button">-</button>
+              <input type="number" id="quantity_item_1" name="quantity_item_1" value="1" min="0" class="quantity-input" required>
+              <button type="button" class="increase-button">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="product">
+          <div class="product-info">
+            <img src="{{ url_for('static', filename='Images/Screenshot 2023-12-07 140449.png') }}" alt="Pokemon: Sun and Moon">
+            <h4>Pokemon: Sun and Moon</h4>
+            <div class="price">$335.00</div>
+          </div>
+          <div class="product-quantity">
+            <label for="quantity_item_2">Quantity:</label>
+            <div class="quantity-controls">
+              <button type="button" class="decrease-button">-</button>
+              <input type="number" id="quantity_item_2" name="quantity_item_2" value="1" min="0" class="quantity-input" required>
+              <button type="button" class="increase-button">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="product">
+          <div class="product-info">
+            <img src="{{ url_for('static', filename='Images/Screenshot 2023-12-07 140354.png') }}" alt="Pokemon: Fusion Strike">
+            <h4>Pokemon: Fusion Strike</h4>
+            <div class="price">$235.00</div>
+          </div>
+          <div class="product-quantity">
+            <label for="quantity_item_3">Quantity:</label>
+            <div class="quantity-controls">
+              <button type="button" class="decrease-button">-</button>
+              <input type="number" id="quantity_item_3" name="quantity_item_3" value="1" min="0" class="quantity-input" required>
+              <button type="button" class="increase-button">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="product">
+          <div class="product-info">
+            <img src="{{ url_for('static', filename='Images/Screenshot 2024-02-04 161925.png') }}" alt="Flash and Blood: Monarch Unlimited">
+            <h4>Flash and Blood: Monarch Unlimited</h4>
+            <div class="price">$65.00</div>
+          </div>
+          <div class="product-quantity">
+            <label for="quantity_item_4">Quantity:</label>
+            <div class="quantity-controls">
+              <button type="button" class="decrease-button">-</button>
+              <input type="number" id="quantity_item_4" name="quantity_item_4" value="1" min="0" class="quantity-input" required>
+              <button type="button" class="increase-button">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="product">
+          <div class="product-info">
+            <img src="{{ url_for('static', filename='Images/Screenshot 2024-02-04 162346.png') }}" alt="Final Fantasy: Resurgence of Power">
+            <h4>Final Fantasy: Resurgence of Power</h4>
+            <div class="price">$105.00</div>
+          </div>
+          <div class="product-quantity">
+            <label for="quantity_item_5">Quantity:</label>
+            <div class="quantity-controls">
+              <button type="button" class="decrease-button">-</button>
+              <input type="number" id="quantity_item_5" name="quantity_item_5" value="1" min="0" class="quantity-input" required>
+              <button type="button" class="increase-button">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="product">
+          <div class="product-info">
+            <img src="{{ url_for('static', filename='Images/Screenshot 2024-02-04 162410.png') }}" alt="Magic The Gathering: The Lost Caverns of Ixalan">
+            <h4>Magic The Gathering: The Lost Caverns of Ixalan</h4>
+            <div class="price">$120.00</div>
+          </div>
+          <div class="product-quantity">
+            <label for="quantity_item_6">Quantity:</label>
+            <div class="quantity-controls">
+              <button type="button" class="decrease-button">-</button>
+              <input type="number" id="quantity_item_6" name="quantity_item_6" value="1" min="0" class="quantity-input" required>
+              <button type="button" class="increase-button">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="product">
+          <div class="product-info">
+            <img src="{{ url_for('static', filename='Images/Screenshot 2024-02-04 162420.png') }}" alt="Pokemon: Lost Origin">
+            <h4>Pokemon: Lost Origin</h4>
+            <div class="price">$240.00</div>
+          </div>
+          <div class="product-quantity">
+            <label for="quantity_item_7">Quantity:</label>
+            <div class="quantity-controls">
+              <button type="button" class="decrease-button">-</button>
+              <input type="number" id="quantity_item_7" name="quantity_item_7" value="1" min="0" class="quantity-input" required>
+              <button type="button" class="increase-button">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit">Checkout</button>
+    </form>
+
+    <script>
+      const decreaseButtons = document.querySelectorAll('.decrease-button');
+      const increaseButtons = document.querySelectorAll('.increase-button');
+
+      decreaseButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          const input = button.parentElement.querySelector('.quantity-input');
+          if (input.value > 0) {
+            input.value = parseInt(input.value) - 1;
+          }
+        });
+      });
+
+      increaseButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          const input = button.parentElement.querySelector('.quantity-input');
+          input.value = parseInt(input.value) + 1;
+        });
+      });
+    </script>
+  </body>
+{% endblock %}

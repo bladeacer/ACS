@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Library Loan System - Retrieve Feedback{% endblock %}
+{% block content %}
+<h1 class="display-4">Retrieve Feedback</h1>
+<div>
+{% if count == 0 %}
+<p>There are no feedback</p>
+{% elif count == 1 %}
+<p>There is 1 feedback</p>
+{% else %}
+<p>There are {{ count }} feedback</p>
+{% endif %}
+</div>
+<div>
+<table class="table table-striped">
+<thead>
+<tr>
+<th>User ID</th>
+<th>Email</th>
+<th>Category</th>
+<th>Rating</th>
+<th>Feedback</th>
+    <th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+{% for user in users_list %}
+<tr>
+<td>{{ user.get_email() }}</td>
+<td>{{ user.get_category() }}</td>
+<td>{{ user.get_rating() }}</td>
+<td>{{ user.get_feedback_content() }}</td>
+{% if user.get_membership() == "F" %}
+<td>Fellow</td>
+{% elif user.get_membership() == "S" %}
+<td>Senior</td>
+{% elif user.get_membership() == "P" %}
+<td>Professional</td>
+{% endif %}
+<td>{{ user.get_remarks() }}</td>
+<td><a href="#" class="btn btn-warning">Update</a></td>
+<td>
+<form action="" method="POST">
+<input type="submit" value="Delete" class="btn btn-danger">
+</form>
+</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endblock %}

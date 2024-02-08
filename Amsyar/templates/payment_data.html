@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Library Loan System - Payment Data{% endblock %}
+
+{% block content %}
+    <h1>Payment Data</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Email</th>
+                <th>Amount</th>
+                <th>Payment Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for payment_entry in payment_data %}
+                <tr>
+                    <td>{{ payment_entry.id }}</td>
+                    <td>{{ payment_entry.email }}</td>
+                    <td>{{ "{:.2f}".format(payment_entry.amount_total / 100) }}</td>
+                    <td>{{ payment_entry.payment_status }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

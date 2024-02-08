@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&display=swap');
+
+nav {
+  position: fixed; /* add fixed position to make the navbar fixed */
+  width: 100%; /* add width to make the navbar stretch to full width */
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-image: url("Screenshot\ 2024-01-09\ 191217.png");
+  background-size: 1280px 900px;
+  display: flex;
+}
+
+.container {
+  width: 450px;
+  padding: 20px;
+  margin: 80px auto; /* change margin to auto for horizontal centering */
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 20px;
+}
+
+h1 {
+  text-align: center;
+}
+
+.question {
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.options {
+  margin-bottom: 20px;
+}
+
+.option {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.button {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: #428bca;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+  margin-right: 10px;
+}
+
+.button:hover {
+  background-color: #3071a9;
+}
+
+.result {
+  text-align: center;
+  margin-top: 20px;
+  font-weight: bold;
+}
+
+.hide{
+  display: none;
+}
