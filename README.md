@@ -1,6 +1,6 @@
 # App Development Project
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 Amsyar's Card Shop (APP DEVELOPMENT PROJECT)
 Roles:
@@ -25,6 +25,7 @@ Roles:
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/sunrayyourdev"><img src="https://avatars.githubusercontent.com/u/148852640?v=4?s=100" width="100px;" alt="sunrayyourdev"/><br /><sub><b>sunrayyourdev</b></sub></a><br /><a href="https://github.com/bladeacer/ACS/commits?author=sunrayyourdev" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Bamsyar"><img src="https://avatars.githubusercontent.com/u/148923333?v=4?s=100" width="100px;" alt="Bamsyar"/><br /><sub><b>Bamsyar</b></sub></a><br /><a href="https://github.com/bladeacer/ACS/commits?author=Bamsyar" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://allcontributors.org"><img src="https://avatars.githubusercontent.com/u/46410174?v=4?s=100" width="100px;" alt="All Contributors"/><br /><sub><b>All Contributors</b></sub></a><br /><a href="#tool-all-contributors" title="Tools">🔧</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/features/security"><img src="https://avatars.githubusercontent.com/u/27347476?v=4?s=100" width="100px;" alt="Dependabot"/><br /><sub><b>Dependabot</b></sub></a><br /><a href="#infra-dependabot" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
     </tr>
   </tbody>
 </table>
