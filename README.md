@@ -13,6 +13,15 @@ Roles:
 - Register staff created
 - Amsyar's code is included in a separate directory (we could not fully integrate this)
 
+## Credits
+
+- [chartJS](./static/vendor/chart.js), DataTables (if used), [jQuery](static/vendor/jquery), [Dropzonejs](./static/js/node_modules/dropzone/README.md)
+
+
+- CSS: [Bootstrap template](https://startbootstrap.com/theme/sb-admin-2), [Bootstrap](https://getbootstrap.com/) 
+
+
+
 ## Contributors
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
